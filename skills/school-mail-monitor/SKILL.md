@@ -177,3 +177,4 @@ If no new emails found, tell user for chat, do NOT send a message to Slack for c
 
 User can also ask:
 - "Check school emails" — run the full workflow manually
+- "Explain more details about a mail" - get the content of the target mail by using `gog` and give more details
