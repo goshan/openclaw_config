@@ -9,8 +9,8 @@ echo "1. Installing skill..."
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" &> /dev/null && pwd)
 SKILL_DIR="$HOME/.openclaw/skills/school-mail-monitor"
 mkdir -p "$SKILL_DIR/scripts"
-cp SKILL.md "$SKILL_DIR/SKILL.md"
-cp scripts/init_db.sh "$SKILL_DIR/scripts/init_db.sh"
+cp "$SCRIPT_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
+cp "$SCRIPT_DIR/scripts/init_db.sh" "$SKILL_DIR/scripts/init_db.sh"
 chmod +x "$SKILL_DIR/scripts/init_db.sh"
 echo "   Skill installed to $SKILL_DIR"
 
