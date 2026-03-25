@@ -29,7 +29,8 @@ echo ""
 
 # 4. Cron job
 echo "4. Set up cron job (slack CHANNEL_ID is required in this step)"
-read -p "slack CHANNEL_ID: " channel_id
+printf "slack CHANNEL_ID: "
+read -r channel_id
 
 openclaw cron add \
   --name "Check school emails" \
