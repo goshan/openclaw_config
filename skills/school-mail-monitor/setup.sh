@@ -34,7 +34,7 @@ read -r channel_id
 
 openclaw cron add \
   --name "Check school emails" \
-  --cron "0 8,12,18 * * *" \
+  --cron "0 8,12,18,22 * * *" \
   --tz "Asia/Tokyo" \
   --session isolated \
   --model "deepseek/deepseek-reasoner" \
