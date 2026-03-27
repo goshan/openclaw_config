@@ -126,6 +126,8 @@ Translate the email body If the email is in English or Japanese.]
 If none, write "No action required."]
 ```
 
+Attention: Don't send the reformated content to channel at this step, follow step 3 and only send message at that step.
+
 ### Step 3: Send to Slack Channel
 
 Combine all formatted email summaries into one message and send to the Slack channel using the `message` tool:
