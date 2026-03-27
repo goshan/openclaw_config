@@ -132,16 +132,13 @@ If the request comes from user chat, send message to that channel, if it's a cro
 ### Step 3: Send the workflow result to slack
 
 Send the summary of this execution to slack with the following format.
+Attention: No matter if there are new mails or not, always send the this summary to slack
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Executed_at: YYYY-MM-DD
 📬 Total: X new email(s) processed
 ```
-
-Attention:
-- Cron-triggered scans: Only announce when there's something new to report. No need message if no new emails found(skip silently)
-- User-initiated checks: Always respond to the user directly (whenever in DM or channel) with "no new emails" or the report.
 
 ---
 
