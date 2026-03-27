@@ -12,7 +12,7 @@ mkdir -p "$SKILL_DIR"
 cp "$SCRIPT_DIR/../SKILL.md" "$SKILL_DIR/SKILL.md"
 mkdir -p "$SKILL_DIR/bins"
 cp "$SCRIPT_DIR/../bins/mail_fetch" "$SKILL_DIR/bins/mail_fetch"
-chmod +x "$SKILL_DIR/scripts/mail_fetch"
+chmod +x "$SKILL_DIR/bins/mail_fetch"
 echo "   Skill installed to $SKILL_DIR"
 
 echo "Restart OpenClaw:"
