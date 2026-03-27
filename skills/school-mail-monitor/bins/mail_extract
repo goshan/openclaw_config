@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""
+mail-extract: Extract readable text from a Gmail message JSON file.
+Usage: mail-extract <input.json> [output.txt]
+  If output.txt is omitted, prints to stdout.
+"""
+
+import sys
+import json
+import base64
+import re
+
+
+def strip_html(html):
+    """Convert HTML to readable plain text."""
+    text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'</(p|div|tr|li|h[1-6]|blockquote)>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<(hr)\s*/?>', '\n---\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<a\s[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'\2 (\1)', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<[^>]+>', '', text)
+    # Decode HTML entities
+    text = re.sub(r'&nbsp;', ' ', text)
+    text = re.sub(r'&amp;', '&', text)
+    text = re.sub(r'&lt;', '<', text)
+    text = re.sub(r'&gt;', '>', text)
+    text = re.sub(r'&quot;', '"', text)
+    text = re.sub(r'&#39;', "'", text)
+    text = re.sub(r'&#x?[0-9a-fA-F]+;', '', text)
+    # Clean up whitespace
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r' *\n *', '\n', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+def decode_body(data):
+    """Decode base64url-encoded body data."""
+    if not data:
+        return ''
+    # Gmail uses URL-safe base64 without padding
+    padded = data + '=' * (4 - len(data) % 4) if len(data) % 4 else data
+    try:
+        return base64.urlsafe_b64decode(padded).decode('utf-8', errors='replace')
+    except Exception:
+        return ''
+
+
+def extract_parts(parts, result):
+    """Recursively extract text parts in partId order into a single result list."""
+    sorted_parts = sorted(parts, key=lambda p: int(p.get('partId', 0)))
+    for part in sorted_parts:
+        mime = part.get('mimeType', '')
+        body_data = part.get('body', {}).get('data', '')
+
+        if body_data:
+            if mime == 'text/plain':
+                decoded = decode_body(body_data)
+                if decoded:
+                    result.append(decoded)
+            elif mime == 'text/html':
+                decoded = decode_body(body_data)
+                if decoded:
+                    result.append(strip_html(decoded))
+
+        extract_parts(part.get('parts', []), result)
+
+
+def get_header(headers, name):
+    """Get a header value by name (case-insensitive)."""
+    for h in headers:
+        if h.get('name', '').lower() == name.lower():
+            return h.get('value', '')
+    return ''
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: mail-extract <input.json> [output.txt]", file=sys.stderr)
+        sys.exit(1)
+
+    input_path = sys.argv[1]
+    output_path = sys.argv[2] if len(sys.argv) > 2 else None
+
+    with open(input_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # payload may be under data.message.payload or data.payload
+    payload = data.get('message', data).get('payload', {})
+
+    # pare header
+    headers = payload.get('headers', [])
+    subject = get_header(headers, 'Subject')
+    sender = get_header(headers, 'From')
+    date = get_header(headers, 'Date')
+
+    # parse parts
+    parts = payload.get('parts', [])
+    result = []
+    extract_parts(parts, result)
+
+    if result:
+        body = '\n'.join(result)
+    else:
+        body = data.get('message', data).get('snippet', 'No body content found.')
+
+    output = f"Subject: {subject}\nFrom: {sender}\nDate: {date}\n---\n{body}\n"
+
+    if output_path:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(output)
+        print(f"Extracted to {output_path}")
+    else:
+        print(output)
+
+
+if __name__ == '__main__':
+    main()

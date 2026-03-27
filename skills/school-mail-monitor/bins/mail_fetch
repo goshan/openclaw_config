@@ -3,7 +3,7 @@ set -e
 
 DB_PATH="$HOME/.openclaw/workspace/databases/school_mail_monitor.db"
 MAIL_PATH="$HOME/.openclaw/workspace/emails"
-SKILL_DIR="$HOME/.openclaw/workspace/skills/school-mail-monitor"
+BIN_DIR=$(cd -- "$(dirname -- "$0")" &> /dev/null && pwd)
 
 # fetch last execution time
 new_time=$(date +"%Y-%m-%d %H:%M:%S")
@@ -36,6 +36,8 @@ for from in "${froms[@]}"; do
     sqlite3 $DB_PATH "INSERT OR IGNORE INTO processed_emails (message_id, subject, sender, received_at) VALUES ('$message_id', '$message_subject', '$message_sender', '$message_date');"
     # save email content to file
     echo $message_content > "$MAIL_PATH/$message_id.json"
+    python3 $BIN_DIR/mail_extract "$MAIL_PATH/$message_id.json" "$MAIL_PATH/$message_id.txt"
+    rm "$MAIL_PATH/$message_id.json"
   done
 done
 
