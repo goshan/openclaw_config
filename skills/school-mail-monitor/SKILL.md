@@ -58,12 +58,14 @@ Notes: max fetching number of mails for each sender is: 20
 
 ### mail_extract
 
+Used by mail_fetch
 Extract readable text from a Gmail message JSON file.
 Usage: mail_extract <input.json> [output.txt]
   If output.txt is omitted, prints to stdout.
 
 ### sqlite3_exec
 
+Used by mail_fetch
 Execute query in sqlite3 with proper charater escape handling
 Usage: sqlite3_exec <database_file> <query_text> <arg1> <arg2> ...
   <query_holder> uses `?` as argument holder, example: 'INSERT OR IGNORE INTO processed_emails (message_id, subject, sender, received_at) VALUES (?, ?, ?, ?)'
