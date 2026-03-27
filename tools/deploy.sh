@@ -36,7 +36,7 @@ cat $HOME_DIR/config.json | jq -c '.cron.jobs[]' | while read -r job; do
     --cron "$schedule" \
     --tz "Asia/Tokyo" \
     --session isolated \
-    --message "message" \
+    --message "$message" \
     --announce \
     --channel slack \
     --to "channel:$channel_id" \
