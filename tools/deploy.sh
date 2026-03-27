@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e
+
+# -f, disable globbing (filename expansion)
+set -ef
 
 echo "=== Deploy ==="
 echo ""
@@ -13,9 +15,10 @@ cat $HOME_DIR/config.json | jq -r '.skills[]' | while read -r skill; do
   mkdir -p "$SKILL_DIR/$skill"
   cp "$HOME_DIR/skills/$skill/SKILL.md" "$SKILL_DIR/$skill/SKILL.md"
 done
-echo "Skill installed to $SKILL_DIR"
+echo "Skills installed to $SKILL_DIR"
+echo ""
 
-echo "Reinstall Cron"
+echo "Installing Cron jobs..."
 channel_id=$(cat $HOME_DIR/config.json | jq -r '.cron.slack_channel_id')
 cat $HOME_DIR/config.json | jq -c '.cron.jobs[]' | while read -r job; do
   name=$(echo $job | jq -r '.name')
@@ -41,10 +44,10 @@ cat $HOME_DIR/config.json | jq -c '.cron.jobs[]' | while read -r job; do
     | jq -r '.id' > "$HOME_DIR/tmp/cron_id_$name"
 done
 echo "Cron re-installed"
+echo ""
 
 echo "Restart OpenClaw"
 systemctl --user restart openclaw-gateway
 
 echo "In Slack, send 'new' to start a fresh session"
-echo "   Then test with: 'Check school emails'"
 echo ""
