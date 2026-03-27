@@ -105,7 +105,7 @@ $OPENCLAW_CONFIG_HOME/bins/mail_fetch "m@mail1.veracross.com"
 $OPENCLAW_CONFIG_HOME/bins/mail_fetch "@issh.ac.jp"
 ```
 
-### Step 2: Reformat each email
+### Step 2: Reformat each email and send to slack
 
 For each email, we have already known the mail id from Step 1, 
 so we need to get the full email content from file `/tmp/<message_id>.txt`,
@@ -126,26 +126,17 @@ Translate the email body If the email is in English or Japanese.]
 If none, write "No action required."]
 ```
 
-Attention: Don't send the reformated content to channel at this step, follow step 3 and only send message at that step.
+Next, send the summary of each email to the Slack channel using the `message` tool.
+If the request comes from user chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to "channel:<CHANNEL_ID>"`.
 
-### Step 3: Send to Slack Channel
+### Step 3: Send the workflow result to slack
 
-Combine all formatted email summaries into one message and send to the Slack channel using the `message` tool:
-if the request comes from user chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to "channel:<CHANNEL_ID>"`.
+Send the summary of this execution to slack with the following format.
 
 ```
-🏫 School Email Report — [today's date]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[formatted email 1]
-
-[formatted email 2]
-
-...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Executed_at: YYYY-MM-DD
 📬 Total: X new email(s) processed
-"
 ```
 
 Attention:
