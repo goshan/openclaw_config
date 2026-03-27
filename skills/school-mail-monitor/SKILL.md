@@ -105,6 +105,8 @@ $OPENCLAW_CONFIG_HOME/bins/mail_fetch "m@mail1.veracross.com"
 $OPENCLAW_CONFIG_HOME/bins/mail_fetch "@issh.ac.jp"
 ```
 
+Attention: If no new email found from the above 2 commands, that's normal, even there might be some mail content files in `/tmp`, that might be the output of previous execution. No need to expand search period to try to fetch more. Just skil step 2 and execute step 3 directly.
+
 ### Step 2: Reformat each email and send to slack
 
 For each email, we have already known the mail id from Step 1, 
@@ -127,7 +129,7 @@ If none, write "No action required."]
 ```
 
 Next, send the summary of each email to the Slack channel using the `message` tool.
-If the request comes from user chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to "channel:<CHANNEL_ID>"`.
+If the request comes from user chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to "channel:<xxxx>"`.
 
 ### Step 3: Send the workflow result to slack
 
