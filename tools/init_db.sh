@@ -24,3 +24,4 @@ CREATE TABLE IF NOT EXISTS scan_state (
 SQL
 
 echo "Database initialized at $MAIL_DB_PATH"
+echo ""

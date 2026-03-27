@@ -14,6 +14,8 @@ mkdir -p "$HOME_DIR/databases"
 mkdir -p "$HOME_DIR/mails"
 mkdir -p "$HOME_DIR/tmp"
 
+echo ""
+
 # Initialize database
 $HOME_DIR/tools/init_db.sh
 
