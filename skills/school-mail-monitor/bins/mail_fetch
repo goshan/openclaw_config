@@ -1,0 +1,45 @@
+#!/bin/bash
+set -e
+
+DB_PATH="$HOME/.openclaw/workspace/databases/school_mail_monitor.db"
+MAIL_PATH="$HOME/.openclaw/workspace/emails/school_mail_monitor"
+SKILL_DIR="$HOME/.openclaw/workspace/skills/school-mail-monitor"
+
+# fetch last execution time
+new_time=$(date +"%Y-%m-%d %H:%M:%S")
+last_time=$(sqlite3 $DB_PATH "SELECT last_scan_time FROM scan_state WHERE id = 1;")
+last_day=$(date -d "$last_time" +"%Y/%m/%d")
+echo "last_scan_day: $last_day"
+
+# target mail senders
+froms=("m@mail1.veracross.com" "@issh.ac.jp")
+for from in "${froms[@]}"; do
+  echo "checking mails from:$from after:$last_day" 
+
+  # fech new emails
+  gog gmail messages search "from:$from after:$last_day" --max 20 --json --account $GOG_ACCOUNT | jq -c '.messages[]' | while read -r item; do
+    message_id=$(echo $item | jq -r '.id')
+    # skip if already processed before
+    processed=$(sqlite3 $DB_PATH "SELECT COUNT(*) FROM processed_emails WHERE message_id = '$message_id';")
+    if [ "$processed" -gt 0 ]; then
+      continue
+    fi
+
+    # fetch mail details
+    echo "found new mail:$message_id"
+    payload=$(gog gmail get $message_id --json --account $GOG_ACCOUNT)
+    message_subject=$(echo $payload | jq -r '.headers.subject')
+    message_sender=$(echo $payload | jq -r '.headers.from')
+    message_date=$(echo $payload | jq -r '.headers.date')
+    message_body=$( | jq -r '.body')
+
+    # insert to processed_emails table
+    sqlite3 $DB_PATH "INSERT OR IGNORE INTO processed_emails (message_id, subject, sender, received_at) VALUES ('$message_id', '$message_subject', '$message_sender', '$message_date');"
+    # save email content to file
+    echo $message_body > "$MAIL_PATH/$message_id.txt"
+  done
+done
+
+# update last_scan_time
+echo "update last_scan_time to $new_time"
+sqlite3 $DB_PATH "UPDATE scan_state SET last_scan_time = $new_time WHERE id = 1;"

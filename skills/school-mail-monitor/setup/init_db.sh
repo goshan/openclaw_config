@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DB_PATH="${HOME}/.openclaw/workspace/school_mail_monitor.db"
+DB_PATH="${HOME}/.openclaw/workspace/databases/school_mail_monitor.db"
 
 sqlite3 "$DB_PATH" << 'SQL'
 CREATE TABLE IF NOT EXISTS processed_emails (

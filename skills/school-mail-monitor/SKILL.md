@@ -11,6 +11,7 @@ metadata:
       bins:
         - sqlite3
         - gog
+        - mail_fetch
 ---
 
 # School Mail Monitor
@@ -19,7 +20,8 @@ Monitor and summarize emails from school-related senders, then deliver formatted
 
 ## Database
 
-Location: `~/.openclaw/workspace/school_mail_monitor.db`
+Record processed emails metadata
+Location: `~/.openclaw/workspace/databases/school_mail_monitor.db`
 
 ### Tables
 
@@ -33,59 +35,36 @@ id, message_id (UNIQUE), subject, sender, received_at, processed_at
 id (always 1), last_scan_time
 ```
 
+## Email Content file
+
+Record all processed email full content as text file
+Location: `~/.openclaw/workspace/emails/school_mail_monitor/<message_id>.txt`
+
 ---
 
 ## WORKFLOW
 
-### Step 1: Get the last scan time
+### Step 1: Fetch all new emails
 
 ```bash
-sqlite3 ~/.openclaw/workspace/school_mail_monitor.db "SELECT last_scan_time FROM scan_state WHERE id = 1;"
+bash ~/.openclaw/workspace/skills/school-mail-monitor/scripts/mail_fetch.sh
 ```
 
-This returns a datetime like `2026-03-25 09:00:00`. Convert it to a Gmail search-compatible format.
+This script will do the following steps
+- get the `last_scan_time` from database
+- fetch all new emails from "m@mail1.veracross.com", "@issh.ac.jp" after `last_scan_date`
+- for each fetched email, check database `processed_emails` for duplication
+- for each new email
+  - print new email id
+  - insert the metadata like id, subject, sender, received_at database `processed_emails`
+  - save email body as a text file under folder `~/.openclaw/workspace/emails/school_mail_monitor`, use message_id as the file name
+- update `last_scan_time` to the current time, so that next time the script continue the work
 
-### Step 2: Search Gmail for new emails
+### Step 2: Reformat each email
 
-Use `gog gmail messages search` with the after: filter based on last scan time.
-
-For emails since a specific date (YYYY/MM/DD):
-
-```bash
-gog gmail messages search "from:m@mail1.veracross.com after:YYYY/MM/DD" --max 20 --json --account $GOG_ACCOUNT
-```
-
-```bash
-gog gmail messages search "from:@issh.ac.jp after:YYYY/MM/DD" --max 20 --json --account $GOG_ACCOUNT
-```
-
-Note: Gmail `after:` filter uses date only (YYYY/MM/DD), not datetime. Use the date portion of last_scan_time.
-
-If last_scan_time is `2026-03-25 09:00:00`, search with `after:2026/03/25`.
-
-### Step 3: Check for duplicates
-
-For each email found, check if it's already processed:
-
-```bash
-sqlite3 ~/.openclaw/workspace/school_mail_monitor.db "SELECT COUNT(*) FROM processed_emails WHERE message_id = '<message_id>';"
-```
-
-Skip if count > 0.
-
-### Step 4: Get full email content
-
-For each new (unprocessed) email:
-
-```bash
-gog gmail get <message_id> --json --account $GOG_ACCOUNT
-```
-
-Extract: subject, from, date, body text.
-
-### Step 5: Reformat each email
-
-For each email, produce a formatted summary following this structure:
+For each email, we have already known the mail id from Step 1, 
+so we need to get the full email content from file `~/.openclaw/workspace/emails/school_mail_monitor/<message_id>.txt`,
+then produce a formatted summary following this structure:
 
 ```
 📧 [Title/Subject]
@@ -102,23 +81,7 @@ Translate the email body If the email is in English or Japanese.]
 If none, write "No action required."]
 ```
 
-### Step 6: Record processed emails
-
-After successfully processing each email:
-
-```bash
-sqlite3 ~/.openclaw/workspace/school_mail_monitor.db "INSERT OR IGNORE INTO processed_emails (message_id, subject, sender, received_at) VALUES ('<message_id>', '<subject>', '<sender_email>', '<received_date>');"
-```
-
-### Step 7: Update last scan time
-
-After processing ALL emails in this batch:
-
-```bash
-sqlite3 ~/.openclaw/workspace/school_mail_monitor.db "UPDATE scan_state SET last_scan_time = datetime('now', 'localtime') WHERE id = 1;"
-```
-
-### Step 8: Send to Slack #mail-report
+### Step 3: Send to Slack #mail-report
 
 Combine all formatted email summaries into one message and send to the Slack channel using the `message` tool:
 if the request comes from chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to "channel:CHANNEL_ID"`.
@@ -177,25 +140,11 @@ If no new emails found, tell user for chat, do NOT send a message to Slack for c
 
 User can also ask questions directly in chat
 
-### Check school emails
-
-User can ask to check the latest new emails from school in chat, then run the full workflow mnually
-
-### Explain more details
-
-After recieving the summary, user can ask questions about more details for some specified emails
-Then follow this steps.
-
-- use the email title of the specified mail to search DB
-
-```
-sqlite3 ~/.openclaw/workspace/school_mail_monitor.db "SELECT message_id from processed_email WHERE subject LIKE %<email_title>%;"
-```
-
-- get the content of the target mail by using `gog`
-
-```
-gog gmail get <message_id> --json --account $GOG_ACCOUNT
-```
-
-- then based on the email content explain user's questions
+- "Check school emails" -> User can ask to check the latest new emails from school in chat, then run the full workflow mnually
+- "Explain more details for a summarized mail" -> Checking the extracted email content, give more details to user based on questions, if there is no content found in cache or history, then you can search the database by subject to get email id, then read the cotent from file again. 
+  - An example is: if user ask a question about the first email in the summary
+    - Check cache and history, if found, then use it to give more details to user
+    - Otherwise,
+      - Search database by subject to get the email_id. `sqlite3 ~/.openclaw/workspace/databases/school_mail_monitor.db "SELECT message_id FROM processed_emails WHERE subject LIKE '%<subject>%';"`
+      - Read file `~/.openclaw/workspace/emails/school_mail_monitor/<message_id>.txt` to get mail full content
+      - Then anwser user's question based on the mail content
