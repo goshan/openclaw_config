@@ -27,19 +27,18 @@ for from in "${froms[@]}"; do
 
     # fetch mail details
     echo "found new mail:$message_id"
-    payload=$(gog gmail get $message_id --json --account $GOG_ACCOUNT)
-    message_subject=$(echo $payload | jq -r '.headers.subject')
-    message_sender=$(echo $payload | jq -r '.headers.from')
-    message_date=$(echo $payload | jq -r '.headers.date')
-    message_body=$( | jq -r '.body')
+    message_content=$(gog gmail get $message_id --json --account $GOG_ACCOUNT)
+    message_subject=$(echo $message_content | jq -r '.headers.subject')
+    message_sender=$(echo $message_content | jq -r '.headers.from')
+    message_date=$(echo $message_content | jq -r '.headers.date')
 
     # insert to processed_emails table
     sqlite3 $DB_PATH "INSERT OR IGNORE INTO processed_emails (message_id, subject, sender, received_at) VALUES ('$message_id', '$message_subject', '$message_sender', '$message_date');"
     # save email content to file
-    echo $message_body > "$MAIL_PATH/$message_id.txt"
+    echo $message_content > "$MAIL_PATH/$message_id.json"
   done
 done
 
 # update last_scan_time
 echo "update last_scan_time to $new_time"
-sqlite3 $DB_PATH "UPDATE scan_state SET last_scan_time = $new_time WHERE id = 1;"
+sqlite3 $DB_PATH "UPDATE scan_state SET last_scan_time = '$new_time' WHERE id = 1;"

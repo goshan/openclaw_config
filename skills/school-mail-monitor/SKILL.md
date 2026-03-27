@@ -37,8 +37,8 @@ id (always 1), last_scan_time
 
 ## Email Content file
 
-Record all processed email full content as text file
-Location: `~/.openclaw/workspace/emails/<message_id>.txt`
+Record all processed email full content as json file
+Location: `~/.openclaw/workspace/emails/<message_id>.json`
 
 ---
 
@@ -57,13 +57,13 @@ This script will do the following steps
 - for each new email
   - print new email id
   - insert the metadata like id, subject, sender, received_at database `processed_emails`
-  - save email body as a text file under folder `~/.openclaw/workspace/emails/`, use message_id as the file name
+  - save the whole email content as a json file under folder `~/.openclaw/workspace/emails/`, use message_id as the file name
 - update `last_scan_time` to the current time, so that next time the script continue the work
 
 ### Step 2: Reformat each email
 
 For each email, we have already known the mail id from Step 1, 
-so we need to get the full email content from file `~/.openclaw/workspace/emails/<message_id>.txt`,
+so we need to get the full email content from file `~/.openclaw/workspace/emails/<message_id>.json`,
 then produce a formatted summary following this structure:
 
 ```
@@ -147,7 +147,7 @@ User can also ask questions directly in chat
     - Check cache and history, if found, then use it to give more details to user
     - Otherwise,
       - Search database by subject to get the email_id. `sqlite3 ~/.openclaw/workspace/databases/school_mail_monitor.db "SELECT message_id FROM processed_emails WHERE subject LIKE '%<subject>%';"`
-      - Read file `~/.openclaw/workspace/emails/<message_id>.txt` to get mail full content
+      - Read file `~/.openclaw/workspace/emails/<message_id>.json` to get mail full content
       - Then anwser user's question based on the mail content
   - If the mail content file doesn't exist in `~/.openclaw/workspace/emails`, then use `gog gmail get <message_id> --account $GOG_ACCOUNT` to get full content again.
 
