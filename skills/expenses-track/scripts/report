@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # report — Generate daily or monthly expense reports
-# Usage: report daily | report monthly
+# Usage: report daily|monthly [--webhook <url>]
 
 set -euo pipefail
 
-DB="${OPENCLAW_CONFIG_HOME}/data/expense.db"
+HOME_DIR=$(cd "$(dirname "$0")/../../.." &> /dev/null && pwd)
+DB="${HOME_DIR}/data/expense.db"
 
 q() { sqlite3 "$DB" "$1"; }
 
@@ -172,11 +173,27 @@ monthly_report() {
   echo "💰 Grand Total: ${grand_total}"
 }
 
-case "${1:-}" in
-  daily)   daily_report ;;
-  monthly) monthly_report ;;
-  *)
-    echo "Usage: report daily | report monthly" >&2
-    exit 1
-    ;;
-esac
+WEBHOOK_URL=""
+MODE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    daily|monthly) MODE="$1"; shift ;;
+    --webhook) WEBHOOK_URL="$2"; shift 2 ;;
+    *) echo "Usage: report daily|monthly [--webhook <url>]" >&2; exit 1 ;;
+  esac
+done
+
+if [ -z "$MODE" ]; then
+  echo "Usage: report daily|monthly [--webhook <url>]" >&2
+  exit 1
+fi
+
+output=$("${MODE}_report")
+
+if [ -n "$WEBHOOK_URL" ]; then
+  payload=$(jq -n --arg text "$output" '{"text": $text}')
+  curl -s -X POST -H 'Content-type: application/json' --data "$payload" "$WEBHOOK_URL"
+else
+  echo "$output"
+fi
