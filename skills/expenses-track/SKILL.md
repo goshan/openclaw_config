@@ -42,7 +42,7 @@ Schema:
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   payment_method_id INTEGER NOT NULL,
-  date TEXT NOT NULL,           -- expense happened date
+  date TEXT NOT NULL,           -- expense happened date, %Y-%m-%d
   store TEXT,                   -- store name
   amount REAL NOT NULL,         -- expense amount, unit is JPY
   category TEXT,                -- category generated based on store
@@ -69,7 +69,7 @@ Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 
 Insert a transaction record into the expense database.
 Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
-  date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
+  date:     'YYYY/MM/DD', 'YYYY-MM-DD', or either with ' HH:mm' — stored as YYYY-MM-DD
 Location: `$OPENCLAW_CONFIG_HOME/skills/expenses-track/scripts/expense_add`
 
 ---

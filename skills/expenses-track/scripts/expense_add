@@ -2,7 +2,7 @@
 """
 expense_add: Insert a transaction record into the expenses database.
 Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
-  date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
+  date:     'YYYY/MM/DD', 'YYYY-MM-DD', or either with ' HH:mm' — stored as YYYY-MM-DD
 """
 
 import sys
@@ -14,13 +14,13 @@ DB_PATH = Path(__file__).parent.parent.parent.parent / 'data' / 'expense.db'
 
 
 def parse_date(date_str):
-    """Convert 'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' to 'YYYY/MM/DD'."""
-    for fmt in ('%Y/%m/%d %H:%M', '%Y/%m/%d'):
+    """Parse date in various formats and return 'YYYY-MM-DD'."""
+    for fmt in ('%Y/%m/%d %H:%M', '%Y/%m/%d', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
         try:
-            return datetime.strptime(date_str.strip(), fmt).strftime('%Y/%m/%d')
+            return datetime.strptime(date_str.strip(), fmt).strftime('%Y-%m-%d')
         except ValueError:
             continue
-    raise ValueError(f"Invalid date format: '{date_str}'. Expected 'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD'.")
+    raise ValueError(f"Invalid date format: '{date_str}'. Expected 'YYYY/MM/DD' or 'YYYY-MM-DD' (with optional HH:mm).")
 
 
 def main():
