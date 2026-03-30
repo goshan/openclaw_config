@@ -39,7 +39,7 @@ Record all payment transactions from cards, paypay or cash.
 Schema:
 
 ```sql
-transactions: id, payment_method_id, date, store, amount, currency, category, note, created_at
+transactions: id, payment_method_id, date, store, amount, category, note, created_at
 ```
 
 ## Scripts
@@ -58,9 +58,8 @@ Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 ### expense_add
 
 Insert a transaction record into the expenses database.
-Usage: expense_add <payment_method_id> <date> <store> <amount> <currency> <category> <note>
+Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
   date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
-  currency: one of JPY, USD, CNY
 Location: `$OPENCLAW_CONFIG_HOME/tools/database/expense_add`
 
 ---
@@ -94,9 +93,7 @@ For each email in the output, according to different email sender, extract the f
 - amount
   - TS CUBIC (Lexus VISA) -> look for content about '利用金額'
   - Vpass/SMBC (Amazon MC) -> A number that includes currency unit like yen symbol (¥) or 円 or USD symbol ($) after store info
-- currency: Detect based on the amount unit.
-  - yen symbol (¥) or 円 is 'JPY'
-  - USD symbol ($) is 'USD'
+  - if the unit is not yen, ¥, or 円, then detect the currency and convert the amount to JPY with the laest currency, then record the orinal amount, unit, and currency as <note>
 - category: Assign categories based on store name keywords
   - コンビニ, Lawson, ファミマ, セブン, 7-Eleven → Food
   - スーパー, イオン, ライフ, まいばすけっと → Groceries
@@ -108,7 +105,9 @@ For each email in the output, according to different email sender, extract the f
   - Netflix, Spotify, YouTube, サブスク → Subscription
   - 電気, ガス, 水道, NHK → Utilities
   - Other for anything that doesn't match
-- note: any other important information or memo that needs to be recorded, set to NULL if there is no
+- note
+  - if the original amount unit was not JPY, and a currency conversion hapened, record the amount, unit, currency to this field
+  - any other important information or memo that needs to be recorded, set to NULL if there is no
 
 ### Step 3: Run the script to insert transaction record
 
@@ -151,8 +150,7 @@ Extract transaction fields based on this strategy
   - A Paypay app screenshot -> PayPay
 - date: convert the format to YYYY/MM/DD
 - store
-- amount
-- currency: if no symbol or unit in around amount, use 'JPY' as default
+- amount: use the same rule as MODE 1 Step 2
 - category: use the same rule as MODE 1 Step 2
 - note: use the same rule as MODE 1 Step 2
 
@@ -176,10 +174,9 @@ When user says something like "spent 1500 yen at Lawson with PayPay":
   - user may say 'iD' or 'id' or "ID" -> 'Amazon Mastercard'
 - date: message date, also use format YYYY/MM/DD
 - store: 'Unknown' as default if no user input, no need to confirm
-- amount
-- currency: 'JPY' as default
+- amount: use the same rule as MODE 1 Step 2
 - category: use the same rule as MODE 2 Step 2
-- note: keep empty
+- note: use the same rule as MODE 1 Step 2
 
 ### Step 2: Run the script to insert to table transaction
 

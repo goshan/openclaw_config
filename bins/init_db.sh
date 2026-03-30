@@ -40,7 +40,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   date TEXT NOT NULL,
   store TEXT,
   amount REAL NOT NULL,
-  currency TEXT DEFAULT 'JPY',
   category TEXT,
   note TEXT,
   created_at TEXT DEFAULT (datetime('now', 'localtime')),

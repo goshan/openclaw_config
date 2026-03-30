@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
 expense_add: Insert a transaction record into the expenses database.
-Usage: expense_add <payment_method_id> <date> <store> <amount> <currency> <category> <note>
+Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
   date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
-  currency: one of JPY, USD, CNY
 """
 
 import sys
@@ -11,7 +10,6 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 
-VALID_CURRENCIES = {'JPY', 'USD', 'CNY'}
 DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'expense.db'
 
 
@@ -38,11 +36,6 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    currency = currency.upper()
-    if currency not in VALID_CURRENCIES:
-        print(f"Error: currency must be one of {', '.join(sorted(VALID_CURRENCIES))}, got '{currency}'.", file=sys.stderr)
-        sys.exit(1)
-
     try:
         amount = float(amount_raw)
     except ValueError:
@@ -54,8 +47,8 @@ def main():
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO transactions (payment_method_id, date, store, amount, currency, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (payment_method_id, date, store, amount, currency, category, note)
+            "INSERT INTO transactions (payment_method_id, date, store, amount, category, note) VALUES (?, ?, ?, ?, ?, ?)",
+            (payment_method_id, date, store, amount, category, note)
         )
         conn.commit()
         print(f"Inserted transaction id={cur.lastrowid}: {store} {amount} {currency} on {date}")
