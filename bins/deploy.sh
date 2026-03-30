@@ -10,7 +10,7 @@ HOME_DIR=$(cd "$(dirname "$0")/.." &> /dev/null && pwd)
 SKILL_DIR="$HOME/.openclaw/workspace/skills"
 
 echo "Installing skills..."
-cat $HOME_DIR/config.json | jq -r '.skills[]' | while read -r skill; do
+cat $HOME_DIR/deploy_config.json | jq -r '.skills[]' | while read -r skill; do
   echo "  - $skill"
   mkdir -p "$SKILL_DIR/$skill"
   cp "$HOME_DIR/skills/$skill/SKILL.md" "$SKILL_DIR/$skill/SKILL.md"
@@ -19,11 +19,11 @@ echo "Skills installed to $SKILL_DIR"
 echo ""
 
 echo "Installing Cron jobs..."
-channel_id=$(cat $HOME_DIR/config.json | jq -r '.cron.slack_channel_id')
-cat $HOME_DIR/config.json | jq -c '.cron.jobs[]' | while read -r job; do
+cat $HOME_DIR/deploy_config.json | jq -c '.cron.jobs[]' | while read -r job; do
   name=$(echo $job | jq -r '.name')
   schedule=$(echo $job | jq -r '.schedule')
   message=$(echo $job | jq -r '.message')
+  channel_id=$(echo $job | jq -r '.channel_id')
 
   echo "  - $name"
   if [[ -f "$HOME_DIR/tmp/cron_id_$name" ]]; then
