@@ -51,7 +51,7 @@ def main():
             (payment_method_id, date, store, amount, category, note)
         )
         conn.commit()
-        print(f"Inserted transaction id={cur.lastrowid}: {store} {amount} {currency} on {date}")
+        print(f"Inserted transaction id={cur.lastrowid}: {store} {amount} on {date}")
     except sqlite3.Error as e:
         print(f"SQLite Error: {e}", file=sys.stderr)
         sys.exit(1)
