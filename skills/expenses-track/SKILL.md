@@ -108,7 +108,7 @@ Read the temp file got at step 1, for each email in the file, according to diffe
 For each extracted transaction data, insert to sqlite3 database by the following command
 
 ```bash
-$OPENCLAW_CONFIG_HOME/tools/database/expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<currency>" "<category>" "<note>"
+$OPENCLAW_CONFIG_HOME/tools/database/expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<category>" "<note>"
 ```
 
 ### Step 4: Report results
