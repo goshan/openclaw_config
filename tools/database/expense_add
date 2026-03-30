@@ -24,7 +24,7 @@ def parse_date(date_str):
 
 
 def main():
-    if len(sys.argv) != 8:
+    if len(sys.argv) != 7:
         print(__doc__)
         sys.exit(1)
 
