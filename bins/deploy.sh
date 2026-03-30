@@ -10,8 +10,8 @@ HOME_DIR=$(cd "$(dirname "$0")/.." &> /dev/null && pwd)
 SKILL_DIR="$HOME/.openclaw/workspace/skills"
 CRONTAB_BAK="$HOME_DIR/tmp/crontab.bak"
 
-CRON_START="# --- OPENCLAW MANAGED START (do not edit) ---"
-CRON_END="# --- OPENCLAW MANAGED END ---"
+CRONTAB_START="# --- OPENCLAW MANAGED START (do not edit) ---"
+CRONTAB_END="# --- OPENCLAW MANAGED END ---"
 
 echo "Installing skills..."
 cat $HOME_DIR/deploy_config.json | jq -r '.skills[]' | while read -r skill; do
@@ -28,9 +28,9 @@ crontab_current=$(crontab -l 2>/dev/null || echo "")
 echo "$crontab_current" > "$CRONTAB_BAK"
 
 # Extract unmanaged lines (everything outside markers)
-crontab_before=$(sed -n "1,/^${MARKER_START}/{ /^${MARKER_START}/d; p; }" "$CRONTAB_BAK")
+crontab_before=$(sed -n "1,/^${CRONTAB_START}/{ /^${CRONTAB_START}/d; p; }" "$CRONTAB_BAK")
 crontab_managed=""
-crontab_after=$(sed -n "/^${MARKER_END}/,\${ /^${MARKER_END}/d; p; }" "$CRONTAB_BAK")
+crontab_after=$(sed -n "/^${CRONTAB_END}/,\${ /^${CRONTAB_END}/d; p; }" "$CRONTAB_BAK")
 
 while read -r job; do
   name=$(echo $job | jq -r '.name')
