@@ -84,15 +84,9 @@ For each email in the output, according to different email sender, extract the f
 - payment_method_id
   - `info@tscubic.com` -> 1 (Lexus VISA)
   - `statement@vpass.ne.jp` -> 2 (Amazon Mastercard)
-- date
-  - TS CUBIC (Lexus VISA) -> look for content about '利用日'
-  - Vpass/SMBC (Amazon MC) -> look for content about 'ご利用日時'
-- store
-  - TS CUBIC (Lexus VISA) -> look for content about '利用先'
-  - Vpass/SMBC (Amazon MC) -> look for content before amount, it usually is just 'Mastercard加盟店（買物）'
-- amount
-  - TS CUBIC (Lexus VISA) -> look for content about '利用金額'
-  - Vpass/SMBC (Amazon MC) -> A number that includes currency unit like yen symbol (¥) or 円 or USD symbol ($) after store info
+- date: look for content about '利用日'
+- store: look for content about '利用先'
+- amount: look for content about '利用金額'
   - if the unit is not yen, ¥, or 円, then detect the currency and convert the amount to JPY with the laest currency, then record the orinal amount, unit, and currency as <note>
 - category: Assign categories based on store name keywords
   - コンビニ, Lawson, ファミマ, セブン, 7-Eleven → Food

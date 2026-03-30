@@ -104,7 +104,11 @@ def main():
     if result:
         body = '\n'.join(result)
     else:
-        body = data.get('message', data).get('snippet', 'No body content found.')
+        root_body = data.get('body', '').strip()
+        if root_body:
+            body = root_body
+        else:
+            body = data.get('message', data).get('snippet', 'No body content found.')
 
     output = f"Subject: {subject}\nFrom: {sender}\nDate: {date}\n---\n{body}\n"
 
