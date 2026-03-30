@@ -19,7 +19,7 @@ Track expenses across 2 credit cards, QR code payment and cash payment with auto
 
 ## Database
 
-Location: `$OPENCLAW_CONFIG_HOME/data/expenses.db`
+Location: `$OPENCLAW_CONFIG_HOME/data/expense.db`
 
 ### Payment Methods
 
@@ -67,7 +67,7 @@ Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 
 ### expense_add
 
-Insert a transaction record into the expenses database.
+Insert a transaction record into the expense database.
 Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
   date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
 Location: `$OPENCLAW_CONFIG_HOME/skills/expenses-track/scripts/expense_add`
@@ -236,7 +236,7 @@ For any user request about a custom time range ("last week", "last 3 days", "thi
 
 Summary by card:
 ```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expense.db "
 SELECT pm.name AS payment_method,
        COUNT(*) AS txns,
        printf('¥%,.0f', SUM(t.amount)) AS total
@@ -250,7 +250,7 @@ ORDER BY SUM(t.amount) DESC;
 
 Details:
 ```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expense.db "
 SELECT t.date, pm.name AS payment_method, t.store, t.amount, t.category
 FROM transactions t
 JOIN payment_methods pm ON t.payment_method_id = pm.id
@@ -261,7 +261,7 @@ ORDER BY t.date DESC, t.amount DESC;
 
 Grand total:
 ```bash
-sqlite3 $OPENCLAW_CONFIG_HOME/data/expenses.db "
+sqlite3 $OPENCLAW_CONFIG_HOME/data/expense.db "
 SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS total
 FROM transactions
 WHERE {DATE_FILTER};
@@ -270,7 +270,7 @@ WHERE {DATE_FILTER};
 
 By category:
 ```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expense.db "
 SELECT category, COUNT(*) AS txns, printf('¥%,.0f', SUM(amount)) AS total
 FROM transactions
 WHERE {DATE_FILTER}
@@ -281,4 +281,4 @@ ORDER BY SUM(amount) DESC;
 
 Replace `{DATE_FILTER}` with the appropriate clause from the table above.
 
-You can also decide what query to use based on the schema of table `transactions`.
+You can also decide what query to use based on the schema of table `transactions` in `$OPENCLAW_CONFIG_HOME/data/expense.db`.
