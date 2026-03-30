@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# report — Generate daily or monthly expense reports
+# Usage: report daily | report monthly
+
+set -euo pipefail
+
+DB="${OPENCLAW_CONFIG_HOME}/data/expenses.db"
+
+q() { sqlite3 "$DB" "$1"; }
+
+card_emoji() {
+  case "$1" in
+    Lexus*)   echo "🔵" ;;
+    Amazon*)  echo "🟠" ;;
+    PayPay*)  echo "🟢" ;;
+    Cash*)    echo "🟣" ;;
+    *)        echo "💳" ;;
+  esac
+}
+
+daily_report() {
+  local yesterday
+  yesterday=$(q "SELECT date('now', '-1 day', 'localtime');")
+
+  echo "💳 Daily Expense Report — ${yesterday}"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+
+  # Per-card details
+  local cards
+  cards=$(q "
+    SELECT DISTINCT pm.name
+    FROM transactions t
+    JOIN payment_methods pm ON t.payment_method_id = pm.id
+    WHERE t.date = date('now', '-1 day', 'localtime')
+    ORDER BY pm.id;
+  ")
+
+  local yesterday_total=0
+
+  if [ -z "$cards" ]; then
+    echo "No expenses recorded yesterday. 🎉"
+  else
+    while IFS= read -r card; do
+      local emoji
+      emoji=$(card_emoji "$card")
+      echo "${emoji} ${card}"
+
+      local subtotal=0
+      while IFS='|' read -r store amount category; do
+        printf "  • %s — ¥%'.0f (%s)\n" "$store" "$amount" "$category"
+        subtotal=$(q "SELECT ${subtotal} + ${amount};")
+      done < <(q "
+        SELECT t.store, t.amount, t.category
+        FROM transactions t
+        JOIN payment_methods pm ON t.payment_method_id = pm.id
+        WHERE t.date = date('now', '-1 day', 'localtime')
+          AND pm.name = '${card}'
+        ORDER BY t.amount DESC;
+      ")
+
+      printf "  Subtotal: ¥%'.0f\n" "$subtotal"
+      echo
+      yesterday_total=$(q "SELECT ${yesterday_total} + ${subtotal};")
+    done <<< "$cards"
+  fi
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  printf "💰 Yesterday Total: ¥%'.0f\n" "$yesterday_total"
+  echo
+
+  # Month-to-date
+  local month_name
+  month_name=$(date +"%B")
+  echo "📊 Month-to-Date (${month_name})"
+
+  local month_grand=0
+  while IFS='|' read -r card total; do
+    local emoji
+    emoji=$(card_emoji "$card")
+    printf "  %s %s: %s\n" "$emoji" "$card" "$total"
+    local raw
+    raw=$(q "SELECT REPLACE(REPLACE('${total}', '¥', ''), ',', '');")
+    month_grand=$(q "SELECT ${month_grand} + ${raw};")
+  done < <(q "
+    SELECT pm.name,
+           printf('¥%,.0f', SUM(t.amount)) AS month_total
+    FROM transactions t
+    JOIN payment_methods pm ON t.payment_method_id = pm.id
+    WHERE t.date >= date('now', 'start of month', 'localtime')
+    GROUP BY t.payment_method_id
+    ORDER BY pm.id;
+  ")
+
+  echo "  ━━━━━━━━━━━━━━━━━━"
+  printf "  📈 Accumulated Total: ¥%'.0f\n" "$month_grand"
+}
+
+monthly_report() {
+  local last_month_label
+  last_month_label=$(q "SELECT strftime('%Y-%m', date('now', 'start of month', '-1 month', 'localtime'));")
+  local month_name
+  month_name=$(date -j -f "%Y-%m" "$last_month_label" "+%B %Y" 2>/dev/null \
+    || date -d "${last_month_label}-01" "+%B %Y" 2>/dev/null \
+    || echo "$last_month_label")
+
+  echo "📊 Monthly Expense Report — ${month_name}"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+
+  echo "💳 By Card"
+  while IFS='|' read -r card txns total; do
+    local emoji
+    emoji=$(card_emoji "$card")
+    printf "  %s %s: %s (%s txns)\n" "$emoji" "$card" "$total" "$txns"
+  done < <(q "
+    SELECT pm.name,
+           COUNT(*) AS txns,
+           printf('¥%,.0f', SUM(t.amount)) AS total
+    FROM transactions t
+    JOIN payment_methods pm ON t.payment_method_id = pm.id
+    WHERE t.date >= date('now', 'start of month', '-1 month', 'localtime')
+      AND t.date < date('now', 'start of month', 'localtime')
+    GROUP BY t.payment_method_id
+    ORDER BY SUM(t.amount) DESC;
+  ")
+
+  echo
+  echo "🏷️ Top Categories"
+  local i=1
+  while IFS='|' read -r category total; do
+    printf "  %d. %s — %s\n" "$i" "$category" "$total"
+    i=$((i + 1))
+  done < <(q "
+    SELECT category,
+           printf('¥%,.0f', SUM(amount)) AS total
+    FROM transactions
+    WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
+      AND date < date('now', 'start of month', 'localtime')
+    GROUP BY category
+    ORDER BY SUM(amount) DESC
+    LIMIT 10;
+  ")
+
+  echo
+  echo "🏪 Top Stores"
+  i=1
+  while IFS='|' read -r store visits total; do
+    printf "  %d. %s — %s\n" "$i" "$store" "$total"
+    i=$((i + 1))
+  done < <(q "
+    SELECT store,
+           COUNT(*) AS visits,
+           printf('¥%,.0f', SUM(amount)) AS total
+    FROM transactions
+    WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
+      AND date < date('now', 'start of month', 'localtime')
+    GROUP BY store
+    ORDER BY SUM(amount) DESC
+    LIMIT 10;
+  ")
+
+  echo
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  local grand_total
+  grand_total=$(q "
+    SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0))
+    FROM transactions
+    WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
+      AND date < date('now', 'start of month', 'localtime');
+  ")
+  echo "💰 Grand Total: ${grand_total}"
+}
+
+case "${1:-}" in
+  daily)   daily_report ;;
+  monthly) monthly_report ;;
+  *)
+    echo "Usage: report daily | report monthly" >&2
+    exit 1
+    ;;
+esac

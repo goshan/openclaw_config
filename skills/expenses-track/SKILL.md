@@ -3,7 +3,7 @@ name: expenses-tracker
 description: >
   Track credit card expenses across 2 cards, QR code payment PayPay and cash payment (Lexus VISA, Amazon Mastercard, PayPay JCB, Cash).
   Use when: user upload receipt image or paypay screenshot, asks about expenses, spending, card transactions, or says "expense report", "how much did I spend".
-  Also cron job can use this skill to fetch card usage email or generate daily/weekly/monthly reports
+  Also cron job can use this skill to fetch card usage emails
 metadata:
   openclaw:
     emoji: "💳"
@@ -39,7 +39,17 @@ Record all payment transactions from cards, paypay or cash.
 Schema:
 
 ```sql
-transactions: id, payment_method_id, date, store, amount, category, note, created_at
+CREATE TABLE IF NOT EXISTS transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  payment_method_id INTEGER NOT NULL,
+  date TEXT NOT NULL,           -- expense happened date
+  store TEXT,                   -- store name
+  amount REAL NOT NULL,         -- expense amount, unit is JPY
+  category TEXT,                -- category generated based on store
+  note TEXT,                    -- memo for additional information
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id)
+);
 ```
 
 ## Scripts
@@ -60,7 +70,7 @@ Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 Insert a transaction record into the expenses database.
 Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
   date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
-Location: `$OPENCLAW_CONFIG_HOME/tools/database/expense_add`
+Location: `$OPENCLAW_CONFIG_HOME/skills/expenses-track/scripts/expense_add`
 
 ---
 
@@ -108,7 +118,7 @@ Read the temp file got at step 1, for each email in the file, according to diffe
 For each extracted transaction data, insert to sqlite3 database by the following command
 
 ```bash
-$OPENCLAW_CONFIG_HOME/tools/database/expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<category>" "<note>"
+$OPENCLAW_CONFIG_HOME/skills/expenses-track/scripts/expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<category>" "<note>"
 ```
 
 ### Step 4: Report results
@@ -139,16 +149,22 @@ When user uploads an image in Slack:
 The imageModel automatically processes the image (configured separately)
 
 Extract transaction fields based on this strategy
-- payment_method_id: if hard to detect, ask user directly instead of guessing by yourself
+- payment_method_id
   - A regular receipt photo -> Cash
   - A Paypay app screenshot -> PayPay
+  - If can't be determined, ask user directly instead of guessing
 - store
   - For a receipt, it's usually at the bottom or left bottom
   - For PayPay, it at the top of the image, with an store icon
-- date: convert the format to YYYY/MM/DD
+  - If can't be determined, use 'Unknown', no need to ask 
+- date
   - For a receipt, it's usually in the top right side.
   - For a PayPay screenshot, it's in the top, just under the store icon
-- amount: use the same rule as MODE 1 Step 2
+  - Convert the format to YYYY/MM/DD.
+  - If can't be determined, ask user directly instead of guessing
+- amount
+  - use the same rule as MODE 1 Step 2.
+  - If can't be determined, ask the user directly instead of guessing
 - category: use the same rule as MODE 1 Step 2
 - note: use the same rule as MODE 1 Step 2
 
@@ -166,7 +182,6 @@ Use this format
 ✅ Transaction Recorded: ¥1,500 at Lawson (PayPay) — Food
 ```
 
-
 ---
 
 ## MODE 3: Manual Text Entry
@@ -179,9 +194,13 @@ When user says something like "spent 1500 yen at Lawson with PayPay":
   - if no info from user input, use 'Cash' as default
   - paypay or sth like this -> 'PayPay'
   - user may say 'iD' or 'id' or "ID" -> 'Amazon Mastercard'
-- date: message date, also use format YYYY/MM/DD
-- store: 'Unknown' as default if no user input, no need to confirm
-- amount: use the same rule as MODE 1 Step 2
+- date
+  - message date, also use format YYYY/MM/DD
+- store
+  - 'Unknown' as default if no user input, no need to confirm
+- amount
+  - use the same rule as MODE 1 Step 2
+  - If can't be determined, ask the user directly instead of guessing
 - category: use the same rule as MODE 2 Step 2
 - note: use the same rule as MODE 1 Step 2
 
@@ -195,190 +214,12 @@ Exactly the same as MODE 2 Step 4
 
 ---
 
-## MODE 4: Reports
-
-There are 2 cron jobs to ask you to give a daily and monthly report based on transactions data.
-
-### DAILY REPORT
-
-Query yesterday's transactions AND this month's accumulated total.
-
-**Yesterday's details:**
-
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT pm.name AS payment_method, t.store, t.amount, t.category
-FROM transactions t
-JOIN payment_methods pm ON t.payment_method_id = pm.id
-WHERE t.date = date('now', '-1 day', 'localtime')
-ORDER BY pm.name, t.amount DESC;
-"
-```
-
-**Yesterday's subtotals by card:**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT pm.name AS payment_method,
-       printf('¥%,.0f', SUM(t.amount)) AS total
-FROM transactions t
-JOIN payment_methods pm ON t.payment_method_id = pm.id
-WHERE t.date = date('now', '-1 day', 'localtime')
-GROUP BY t.payment_method_id;
-"
-```
-
-**Month-to-date accumulated total (include in every daily report):**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT pm.name AS payment_method,
-       printf('¥%,.0f', SUM(t.amount)) AS month_total
-FROM transactions t
-JOIN payment_methods pm ON t.payment_method_id = pm.id
-WHERE t.date >= date('now', 'start of month', 'localtime')
-GROUP BY t.payment_method_id;
-"
-```
-
-```bash
-sqlite3 $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS grand_total
-FROM transactions
-WHERE date >= date('now', 'start of month', 'localtime');
-"
-```
-
-**Daily report format:**
-
-```
-💳 Daily Expense Report — [yesterday's date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔵 Lexus Financial (VISA)
-  • Store A — ¥3,000 (Food)
-  • Store B — ¥1,500 (Transport)
-  Subtotal: ¥4,500
-
-🟠 Amazon (Mastercard)
-  • Amazon.co.jp — ¥8,900 (Shopping)
-  Subtotal: ¥8,900
-
-🟢 PayPay (JCB)
-  • Convenience store — ¥500 (Food)
-  Subtotal: ¥500
-
-🟣 Cash
-  • Store — ¥amount (Category)
-  Subtotal: ¥amount
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 Yesterday Total: ¥13,900
-
-📊 Month-to-Date ([month name])
-  🔵 Lexus Financial: ¥45,000
-  🟠 Amazon: ¥32,000
-  🟢 PayPay: ¥18,000
-  🟣 Cash: ¥amount
-  ━━━━━━━━━━━━━━━━━━
-  📈 Accumulated Total: ¥95,000
-```
-
-If no transactions yesterday: "No expenses recorded yesterday. 🎉" (still show the month-to-date section)
-
----
-
-### MONTHLY REPORT
-
-Reports on the PREVIOUS month's data (e.g., on April 1st, report March data).
-
-**Last month's totals by card:**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT pm.name AS payment_method,
-       COUNT(*) AS txns,
-       printf('¥%,.0f', SUM(t.amount)) AS total
-FROM transactions t
-JOIN payment_methods pm ON t.payment_method_id = pm.id
-WHERE t.date >= date('now', 'start of month', '-1 month', 'localtime')
-  AND t.date < date('now', 'start of month', 'localtime')
-GROUP BY t.payment_method_id
-ORDER BY SUM(t.amount) DESC;
-"
-```
-
-**Last month's grand total:**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS grand_total
-FROM transactions
-WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
-  AND date < date('now', 'start of month', 'localtime');
-"
-```
-
-**Last month's top spending categories:**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT category,
-       printf('¥%,.0f', SUM(amount)) AS total
-FROM transactions
-WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
-  AND date < date('now', 'start of month', 'localtime')
-GROUP BY category
-ORDER BY SUM(amount) DESC
-LIMIT 10;
-"
-```
-
-**Last month's top stores:**
-```bash
-sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
-SELECT store,
-       COUNT(*) AS visits,
-       printf('¥%,.0f', SUM(amount)) AS total
-FROM transactions
-WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
-  AND date < date('now', 'start of month', 'localtime')
-GROUP BY store
-ORDER BY SUM(amount) DESC
-LIMIT 10;
-"
-```
-
-**Monthly report format:**
-
-```
-📊 Monthly Expense Report — [last month name] [year]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💳 By Card
-  🔵 Lexus Financial (VISA): ¥45,000 (12 txns)
-  🟠 Amazon (Mastercard): ¥32,000 (8 txns)
-  🟢 PayPay (JCB): ¥18,000 (15 txns)
-  🟣 Cash: ¥5,000 (5 txns)
-
-🏷️ Top Categories
-  1. Food — ¥28,000
-  2. Shopping — ¥22,000
-  3. Transport — ¥15,000
-  4. Dining — ¥12,000
-  5. Utilities — ¥8,000
-
-🏪 Top Stores
-  1. Amazon.co.jp — ¥18,000
-  2. Lawson — ¥8,500
-  3. Seiyu — ¥6,000
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 Grand Total: ¥95,000
-```
-
----
-
-## MODE 5: FLEXIBLE DATE QUERIES
+## MODE 4: FLEXIBLE DATE QUERIES
 
 For any user request about a custom time range ("last week", "last 3 days", "this week", "March", etc.), use these SQLite date patterns:
 
 **Date filter patterns:**
+
 | User says | SQL WHERE clause |
 |-----------|-----------------|
 | today | `date = date('now', 'localtime')` |
@@ -440,9 +281,4 @@ ORDER BY SUM(amount) DESC;
 
 Replace `{DATE_FILTER}` with the appropriate clause from the table above.
 
----
-
-## Error Handling
-
-- If amount can't be parsed, ask the user
-- If card can't be determined, ask the user
+You can also decide what query to use based on the schema of table `transactions`.

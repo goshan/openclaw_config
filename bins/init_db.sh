@@ -37,11 +37,11 @@ CREATE TABLE IF NOT EXISTS payment_methods (
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   payment_method_id INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  store TEXT,
-  amount REAL NOT NULL,
-  category TEXT,
-  note TEXT,
+  date TEXT NOT NULL,           -- expense happened date
+  store TEXT,                   -- store name
+  amount REAL NOT NULL,         -- expense amount, unit is JPY
+  category TEXT,                -- category generated based on store
+  note TEXT,                    -- memo for additional information
   created_at TEXT DEFAULT (datetime('now', 'localtime')),
   FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id)
 );
