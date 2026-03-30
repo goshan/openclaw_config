@@ -28,7 +28,7 @@ def main():
         print(__doc__)
         sys.exit(1)
 
-    payment_method_id, date_raw, store, amount_raw, currency, category, note = sys.argv[1:]
+    payment_method_id, date_raw, store, amount_raw, category, note = sys.argv[1:]
 
     try:
         date = parse_date(date_raw)
