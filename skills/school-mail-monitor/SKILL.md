@@ -42,7 +42,7 @@ Scripts that will be used in this skill
 Fetch new messages in my Gmail account with a provided mail sender list, also manaage a database to save processed mails for deduplication
 Usage: mail_fetch <sender1> <sender2> ...
 These <sender>s don't need to be a full mail address, it can be part of address, ex. a postfix from `@` like `@gmail.com`, etc
-Output: The content text of all newly fetched mails will be printed as stdout 
+Output: Save all email content to a temp file, and print the file path to the stdout
 Notes: max fetching number is: 20
 Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 
@@ -56,13 +56,13 @@ Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 $OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch "m@mail1.veracross.com" "@issh.ac.jp"
 ```
 
-This fetches all new emails sent by "m@mail1.veracross.com" and "@issh.ac.jp" after last fetch date, deduplicates, and output clean content text to stdout.
+This fetches all new emails sent by "m@mail1.veracross.com" and "@issh.ac.jp" after last fetch date, deduplicates, and output clean content text to a temp file. The temp file path is printed by stdout as 'Save all emails content to file: <temp_file_path>'
 If output says `NO_NEW_EMAILS`, skip step 2 and go to step 3 directly.
 
 
 ### Step 2: Summarize each email and send to slack (THIS IS YOUR JOB)
 
-For each email in the output, create a summary with the following format:
+Read the temp file got at step 1, for each email in the file, create a summary with the following format:
 
 ```
 📧 [Title/Subject]

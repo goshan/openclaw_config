@@ -51,7 +51,7 @@ Scripts that will be used in this skill
 Fetch new messages in my Gmail account with a provided mail sender list, also manage a database to save processed mails for deduplication
 Usage: mail_fetch <sender1> <sender2> ...
 These <sender>s don't need to be a full mail address, it can be part of address, ex. a postfix from `@` like `@gmail.com`, etc
-Output: The content text of all newly fetched mails will be printed as stdout 
+Output: Save all email content to a temp file, and print the file path to the stdout
 Notes: max fetching number is: 20
 Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 
@@ -74,12 +74,12 @@ When asked to "check card emails" or triggered by cron:
 $OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch "info@tscubic.com" "statement@vpass.ne.jp"
 ```
 
-This fetches all new emails sent by "info@tscubic.com" "statement@vpass.ne.jp" after last fetch date, deduplicates, and output clean content text to stdout.
+This fetches all new emails sent by "info@tscubic.com" "statement@vpass.ne.jp" after last fetch date, deduplicates, and output clean content text to a temp file. The temp file path is printed by stdout as 'Save all emails content to file: <temp_file_path>'
 If output says `NO_NEW_EMAILS`, skip step 2 and 3, go to step 4 directly.
 
 ### Step 2: Parse email content and extract expense fields
 
-For each email in the output, according to different email sender, extract the following transaction fields based on the email information with different strategy.
+Read the temp file got at step 1, for each email in the file, according to different email sender, extract the following transaction fields based on the email information with different strategy.
 
 - payment_method_id
   - `info@tscubic.com` -> 1 (Lexus VISA)
