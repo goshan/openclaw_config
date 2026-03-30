@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""
+expense_add: Insert a transaction record into the expenses database.
+Usage: expense_add <payment_method_id> <date> <store> <amount> <currency> <category> <note>
+  date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
+  currency: one of JPY, USD, CNY
+"""
+
+import sys
+import sqlite3
+from pathlib import Path
+from datetime import datetime
+
+VALID_CURRENCIES = {'JPY', 'USD', 'CNY'}
+DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'expense.db'
+
+
+def parse_date(date_str):
+    """Convert 'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' to 'YYYY/MM/DD'."""
+    for fmt in ('%Y/%m/%d %H:%M', '%Y/%m/%d'):
+        try:
+            return datetime.strptime(date_str.strip(), fmt).strftime('%Y/%m/%d')
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid date format: '{date_str}'. Expected 'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD'.")
+
+
+def main():
+    if len(sys.argv) != 8:
+        print(__doc__)
+        sys.exit(1)
+
+    payment_method_id, date_raw, store, amount_raw, currency, category, note = sys.argv[1:]
+
+    try:
+        date = parse_date(date_raw)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    currency = currency.upper()
+    if currency not in VALID_CURRENCIES:
+        print(f"Error: currency must be one of {', '.join(sorted(VALID_CURRENCIES))}, got '{currency}'.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        amount = float(amount_raw)
+    except ValueError:
+        print(f"Error: amount must be a number, got '{amount_raw}'.", file=sys.stderr)
+        sys.exit(1)
+
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO transactions (payment_method_id, date, store, amount, currency, category, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (payment_method_id, date, store, amount, currency, category, note)
+        )
+        conn.commit()
+        print(f"Inserted transaction id={cur.lastrowid}: {store} {amount} {currency} on {date}")
+    except sqlite3.Error as e:
+        print(f"SQLite Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        if conn:
+            conn.close()
+
+
+if __name__ == '__main__':
+    main()

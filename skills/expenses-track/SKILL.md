@@ -1,9 +1,9 @@
 ---
 name: expenses-tracker
 description: >
-  Track credit card expenses across 3 cards and cash payment (Lexus VISA, Amazon Mastercard, PayPay JCB, Cash).
-  Use when: user asks about expenses, spending, card transactions, daily/weekly/monthly reports, or says "check card emails", "scan receipt", "expense report", "how much did I spend".
-  Also triggered by cron jobs for automated email checking and daily reports.
+  Track credit card expenses across 2 cards, QR code payment PayPay and cash payment (Lexus VISA, Amazon Mastercard, PayPay JCB, Cash).
+  Use when: user upload receipt image or paypay screenshot, asks about expenses, spending, card transactions, or says "expense report", "how much did I spend".
+  Also cron job can use this skill to fetch card usage email or generate daily/weekly/monthly reports
 metadata:
   openclaw:
     emoji: "💳"
@@ -15,27 +15,53 @@ metadata:
 
 # Expenses Tracker
 
-Track expenses across 3 credit cards and cash payment with automated email detection and manual receipt scanning.
+Track expenses across 2 credit cards, QR code payment and cash payment with automated email detection and manual receipt/screenshot scanning.
 
 ## Database
 
-Location: `~/.openclaw/workspace/expenses.db`
+Location: `$OPENCLAW_CONFIG_HOME/data/expenses.db`
 
-### Cards
+### Payment Methods
+
+A master table for all kinds of payments
+
 | id | name | notification sender |
 |----|------|-------------------|
 | 1 | Lexus | info@tscubic.com (TS CUBIC) |
-| 2 | Amazon | statement@vpass.ne.jp (Vpass/SMBC) |
-| 3 | PayPay | paypaycard-info@mail.paypay-card.co.jp |
-| 4 | Cash | NULL |
+| 2 | Amazon | statement@vpass.ne.jp (Vpass) |
+| 3 | PayPay | screenshot |
+| 4 | Cash | receipt |
 
-### Schema
+### Transactions
+
+Record all payment transactions from cards, paypay or cash.
+
+Schema:
+
 ```sql
-cards: id, name, email_sender
-transactions: id, card_id, date, store, amount, currency, category, note, source, email_id, created_at
+transactions: id, payment_method_id, date, store, amount, currency, category, note, created_at
 ```
 
-The `email_id` column stores Gmail message IDs to prevent duplicate processing. A UNIQUE index enforces this.
+## Scripts
+
+Scripts that will be used in this skill
+
+### mail_fetch
+
+Fetch new messages in my Gmail account with a provided mail sender list, also manage a database to save processed mails for deduplication
+Usage: mail_fetch <sender1> <sender2> ...
+These <sender>s don't need to be a full mail address, it can be part of address, ex. a postfix from `@` like `@gmail.com`, etc
+Output: The content text of all newly fetched mails will be printed as stdout 
+Notes: max fetching number is: 20
+Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
+
+### expense_add
+
+Insert a transaction record into the expenses database.
+Usage: expense_add <payment_method_id> <date> <store> <amount> <currency> <category> <note>
+  date:     'YYYY/MM/DD HH:mm' or 'YYYY/MM/DD' — time portion is stripped automatically
+  currency: one of JPY, USD, CNY
+Location: `$OPENCLAW_CONFIG_HOME/tools/database/expense_add`
 
 ---
 
@@ -43,168 +69,178 @@ The `email_id` column stores Gmail message IDs to prevent duplicate processing. 
 
 When asked to "check card emails" or triggered by cron:
 
-### Step 1: Search Gmail for card notification emails
+### Step 1: Run the script to fetch expense emails for 2 cards
 
 ```bash
-gog gmail messages search "from:info@tscubic.com OR from:statement@vpass.ne.jp OR from:mail.paypay-card.co.jp newer_than:2d" --max 20 --json --account $GOG_ACCOUNT
+$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch "info@tscubic.com" "statement@vpass.ne.jp"
 ```
 
-For each email found, get the full message content:
+This fetches all new emails sent by "info@tscubic.com" "statement@vpass.ne.jp" after last fetch date, deduplicates, and output clean content text to stdout.
+If output says `NO_NEW_EMAILS`, skip step 2 and 3, go to step 4 directly.
+
+### Step 2: Parse email content and extract expense fields
+
+For each email in the output, according to different email sender, extract the following transaction fields based on the email information with different strategy.
+
+- payment_method_id
+  - `info@tscubic.com` -> 1 (Lexus VISA)
+  - `statement@vpass.ne.jp` -> 2 (Amazon Mastercard)
+- date
+  - TS CUBIC (Lexus VISA) -> look for content about '利用日'
+  - Vpass/SMBC (Amazon MC) -> look for content about 'ご利用日時'
+- store
+  - TS CUBIC (Lexus VISA) -> look for content about '利用先'
+  - Vpass/SMBC (Amazon MC) -> look for content before amount, it usually is just 'Mastercard加盟店（買物）'
+- amount
+  - TS CUBIC (Lexus VISA) -> look for content about '利用金額'
+  - Vpass/SMBC (Amazon MC) -> A number that includes currency unit like yen symbol (¥) or 円 or USD symbol ($) after store info
+- currency: Detect based on the amount unit.
+  - yen symbol (¥) or 円 is 'JPY'
+  - USD symbol ($) is 'USD'
+- category: Assign categories based on store name keywords
+  - コンビニ, Lawson, ファミマ, セブン, 7-Eleven → Food
+  - スーパー, イオン, ライフ, まいばすけっと → Groceries
+  - Amazon, アマゾン → Shopping
+  - Suica, PASMO, JR, 電車 → Transport
+  - レストラン, 食堂, 居酒屋, マクドナルド, スターバックス → Dining
+  - ガソリン, ENEOS, Shell, 出光 → Gas/Fuel
+  - 薬局, マツモトキヨシ, ドラッグ → Health
+  - Netflix, Spotify, YouTube, サブスク → Subscription
+  - 電気, ガス, 水道, NHK → Utilities
+  - Other for anything that doesn't match
+- note: any other important information or memo that needs to be recorded, set to NULL if there is no
+
+### Step 3: Run the script to insert transaction record
+
+For each extracted transaction data, insert to sqlite3 database by the following command
 
 ```bash
-gog gmail messages get <message_id> --json --account $GOG_ACCOUNT
+$OPENCLAW_CONFIG_HOME/tools/database/expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<currency>" "<category>" "<note>"
 ```
 
-Only 
+### Step 4: Report results
 
-### Step 2: Check if already processed
+After processing all emails, summarize with this format:
 
-Before processing, check the email_id against the database:
-
-```bash
-sqlite3 ~/.openclaw/workspace/expenses.db "SELECT COUNT(*) FROM transactions WHERE email_id = '<message_id>';"
-```
-
-If count > 0, skip this email (already processed).
-
-### Step 3: Identify the card from sender
-
-- `info@tscubic.com` → card_id = 1 (Lexus Financial VISA)
-- `statement@vpass.ne.jp` → card_id = 2 (Amazon Mastercard)
-- `paypaycard-info@mail.paypay-card.co.jp` or forwarded from `mail.paypay-card.co.jp` → card_id = 3 (PayPay JCB)
-
-### Step 4: Parse the email body
-
-Each card issuer uses different email formats. Extract these fields:
-
-**TS CUBIC (Lexus VISA) — from info@tscubic.com:**
-- Look for: ご利用金額, ご利用日, ご利用先, カード名称
-- Amount may include yen symbol (¥) or 円
-
-**Vpass/SMBC (Amazon MC) — from statement@vpass.ne.jp:**
-- Look for: ご利用金額, ご利用日時, ご利用先
-- May contain multiple transactions in one email
-
-**PayPay Card (JCB) — from paypaycard-info@mail.paypay-card.co.jp:**
-- Look for: ご利用金額, ご利用日, ご利用先
-- Note: forwarded from Yahoo Mail, may have forwarding headers
-- Store name may show as "JCB国内加盟店" — this is normal, the real store name appears later in the statement
-
-### Step 5: Insert into database
-
-```bash
-sqlite3 ~/.openclaw/workspace/expenses.db "INSERT OR IGNORE INTO transactions (card_id, date, store, amount, currency, category, items, tax, note, source, email_id) VALUES (CARD_ID, 'YYYY-MM-DD', 'STORE_NAME', AMOUNT, 'JPY', 'CATEGORY', NULL, NULL, NULL, 'email', 'GMAIL_MESSAGE_ID');"
-```
-
-Use `INSERT OR IGNORE` to safely handle duplicates (the UNIQUE index on email_id prevents double-inserts).
-
-### Step 6: Report results
-
-After processing all emails, summarize:
 ```
 💳 Email Check Complete
 ━━━━━━━━━━━━━━━━━━━━
 New transactions found: X
-Already processed: Y
-Errors: Z
-
 New entries:
-  • Lexus VISA — ¥3,000 at Store A (2026-03-24)
-  • PayPay JCB — ¥500 at Lawson (2026-03-24)
+  • Lexus VISA — ¥3,000 at Store A (YYYY-MM-DD)
+  • Amazon Mastercard — ¥500 at Store B (YYYY-MM-DD)
 ```
 
-### Category Auto-Detection
+New entries shows each transaction
 
-Assign categories based on store name keywords:
-- コンビニ, Lawson, ファミマ, セブン, 7-Eleven → Food
-- スーパー, イオン, ライフ, まいばすけっと → Groceries
-- Amazon, アマゾン → Shopping
-- Suica, PASMO, JR, 電車 → Transport
-- レストラン, 食堂, 居酒屋, マクドナルド → Dining
-- ガソリン, ENEOS, Shell, 出光 → Gas/Fuel
-- 薬局, マツモトキヨシ, ドラッグ → Health
-- Netflix, Spotify, YouTube, サブスク → Subscription
-- 電気, ガス, 水道, NHK → Utilities
-- Other for anything that doesn't match
+If the request comes from user chat, send message to that channel, if it's a cron job, send message to the channel specified by cron setting `--to`.
 
 ---
 
-## MODE 2: Manual Receipt Scanning
+## MODE 2: Manual Receipt or Screenshot Scanning
 
-When user uploads a receipt image in Slack:
+When user uploads an image in Slack:
 
-1. The imageModel automatically processes the image (configured separately)
-2. Extract: store name, date, items, total, tax
-3. Ask which card was used if not mentioned
-4. Card detection from user message:
-   - "Lexus", "レクサス", "VISA" → card_id = 1
-   - "Amazon", "アマゾン", "Mastercard" → card_id = 2
-   - "PayPay", "ペイペイ", "JCB" → card_id = 3
-5. Show parsed data and ask "Is this correct?" before inserting
-6. Insert with source = 'receipt'
+### Step 1: Processes the image
+
+The imageModel automatically processes the image (configured separately)
+
+Extract transaction fields based on this strategy
+- payment_method_id: if hard to detect, ask user directly instead of guessing by yourself
+  - A regular receipt photo -> Cash
+  - A Paypay app screenshot -> PayPay
+- date: convert the format to YYYY/MM/DD
+- store
+- amount
+- currency: if no symbol or unit in around amount, use 'JPY' as default
+- category: use the same rule as MODE 1 Step 2
+- note: use the same rule as MODE 1 Step 2
+
+### Step 2: Show parsed data and ask "Is this correct?" before inserting
+
+### Step 3: Run the script to insert to table transaction
+
+Exactly the same command in MODE 1 Step 3
 
 ---
 
 ## MODE 3: Manual Text Entry
 
-When user says something like "spent 1500 yen at Lawson with PayPay card":
+When user says something like "spent 1500 yen at Lawson with PayPay":
 
-1. Parse: amount, store, card
-2. Insert with source = 'manual'
-3. Confirm:
+### Step 1: Parse to generate the transaction fields
+
+- payment_method
+  - if no info from user input, use 'Cash' as default
+  - paypay or sth like this -> 'PayPay'
+  - user may say 'iD' or 'id' or "ID" -> 'Amazon Mastercard'
+- date: message date, also use format YYYY/MM/DD
+- store: 'Unknown' as default if no user input, no need to confirm
+- amount
+- currency: 'JPY' as default
+- category: use the same rule as MODE 2 Step 2
+- note: keep empty
+
+### Step 2: Run the script to insert to table transaction
+
+Exactly the same command in MODE 1 Step 3
+
+### Step 3: Report to user
+
+Use this format
+
 ```
-✅ Recorded: ¥1,500 at Lawson (PayPay JCB) — Food
+✅ Recorded: ¥1,500 at Lawson (PayPay) — Food
 ```
 
 ---
 
-## Reports
+## MODE 4: Reports
 
-### DAILY REPORT (cron: every day at 9 AM JST)
+There are 2 cron jobs to ask you to give a daily and monthly report based on transactions data.
+
+### DAILY REPORT
 
 Query yesterday's transactions AND this month's accumulated total.
 
 **Yesterday's details:**
+
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT c.name AS card, t.store, t.amount, t.category
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT pm.name AS payment_method, t.store, t.amount, t.category
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE t.date = date('now', '-1 day', 'localtime')
-ORDER BY c.name, t.amount DESC;
+ORDER BY pm.name, t.amount DESC;
 "
 ```
 
 **Yesterday's subtotals by card:**
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT c.name AS card, c.brand,
-       COUNT(*) AS txns,
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT pm.name AS payment_method,
        printf('¥%,.0f', SUM(t.amount)) AS total
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE t.date = date('now', '-1 day', 'localtime')
-GROUP BY t.card_id
-ORDER BY SUM(t.amount) DESC;
+GROUP BY t.payment_method_id;
 "
 ```
 
 **Month-to-date accumulated total (include in every daily report):**
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT c.name AS card,
-       COUNT(*) AS txns,
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT pm.name AS payment_method,
        printf('¥%,.0f', SUM(t.amount)) AS month_total
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE t.date >= date('now', 'start of month', 'localtime')
-GROUP BY t.card_id
-ORDER BY SUM(t.amount) DESC;
+GROUP BY t.payment_method_id;
 "
 ```
 
 ```bash
-sqlite3 ~/.openclaw/workspace/expenses.db "
+sqlite3 $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS grand_total
 FROM transactions
 WHERE date >= date('now', 'start of month', 'localtime');
@@ -230,13 +266,18 @@ WHERE date >= date('now', 'start of month', 'localtime');
   • Convenience store — ¥500 (Food)
   Subtotal: ¥500
 
+🟣 Cash
+  • Store — ¥amount (Category)
+  Subtotal: ¥amount
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 Yesterday Total: ¥13,900
 
 📊 Month-to-Date ([month name])
-  🔵 Lexus Financial: ¥45,000 (12 txns)
-  🟠 Amazon: ¥32,000 (8 txns)
-  🟢 PayPay: ¥18,000 (25 txns)
+  🔵 Lexus Financial: ¥45,000
+  🟠 Amazon: ¥32,000
+  🟢 PayPay: ¥18,000
+  🟣 Cash: ¥amount
   ━━━━━━━━━━━━━━━━━━
   📈 Accumulated Total: ¥95,000
 ```
@@ -245,28 +286,28 @@ If no transactions yesterday: "No expenses recorded yesterday. 🎉" (still show
 
 ---
 
-### MONTHLY REPORT (cron: 1st of every month at 9 AM JST)
+### MONTHLY REPORT
 
 Reports on the PREVIOUS month's data (e.g., on April 1st, report March data).
 
 **Last month's totals by card:**
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT c.name AS card, c.brand,
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT pm.name AS payment_method,
        COUNT(*) AS txns,
        printf('¥%,.0f', SUM(t.amount)) AS total
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE t.date >= date('now', 'start of month', '-1 month', 'localtime')
   AND t.date < date('now', 'start of month', 'localtime')
-GROUP BY t.card_id
+GROUP BY t.payment_method_id
 ORDER BY SUM(t.amount) DESC;
 "
 ```
 
 **Last month's grand total:**
 ```bash
-sqlite3 ~/.openclaw/workspace/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS grand_total
 FROM transactions
 WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
@@ -276,9 +317,8 @@ WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
 
 **Last month's top spending categories:**
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT category,
-       COUNT(*) AS txns,
        printf('¥%,.0f', SUM(amount)) AS total
 FROM transactions
 WHERE date >= date('now', 'start of month', '-1 month', 'localtime')
@@ -291,7 +331,7 @@ LIMIT 10;
 
 **Last month's top stores:**
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT store,
        COUNT(*) AS visits,
        printf('¥%,.0f', SUM(amount)) AS total
@@ -313,7 +353,8 @@ LIMIT 10;
 💳 By Card
   🔵 Lexus Financial (VISA): ¥45,000 (12 txns)
   🟠 Amazon (Mastercard): ¥32,000 (8 txns)
-  🟢 PayPay (JCB): ¥18,000 (25 txns)
+  🟢 PayPay (JCB): ¥18,000 (15 txns)
+  🟣 Cash: ¥5,000 (5 txns)
 
 🏷️ Top Categories
   1. Food — ¥28,000
@@ -323,9 +364,9 @@ LIMIT 10;
   5. Utilities — ¥8,000
 
 🏪 Top Stores
-  1. Amazon.co.jp — ¥18,000 (5 visits)
-  2. Lawson — ¥8,500 (15 visits)
-  3. Seiyu — ¥6,000 (4 visits)
+  1. Amazon.co.jp — ¥18,000
+  2. Lawson — ¥8,500
+  3. Seiyu — ¥6,000
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 Grand Total: ¥95,000
@@ -333,7 +374,7 @@ LIMIT 10;
 
 ---
 
-### FLEXIBLE DATE QUERIES
+## MODE 5: FLEXIBLE DATE QUERIES
 
 For any user request about a custom time range ("last week", "last 3 days", "this week", "March", etc.), use these SQLite date patterns:
 
@@ -354,24 +395,24 @@ For any user request about a custom time range ("last week", "last 3 days", "thi
 
 Summary by card:
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT c.name AS card, c.brand,
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT pm.name AS payment_method,
        COUNT(*) AS txns,
        printf('¥%,.0f', SUM(t.amount)) AS total
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE {DATE_FILTER}
-GROUP BY t.card_id
+GROUP BY t.payment_method_id
 ORDER BY SUM(t.amount) DESC;
 "
 ```
 
 Details:
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
-SELECT t.date, c.name AS card, t.store, t.amount, t.category
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
+SELECT t.date, pm.name AS payment_method, t.store, t.amount, t.category
 FROM transactions t
-JOIN cards c ON t.card_id = c.id
+JOIN payment_methods pm ON t.payment_method_id = pm.id
 WHERE {DATE_FILTER}
 ORDER BY t.date DESC, t.amount DESC;
 "
@@ -379,7 +420,7 @@ ORDER BY t.date DESC, t.amount DESC;
 
 Grand total:
 ```bash
-sqlite3 ~/.openclaw/workspace/expenses.db "
+sqlite3 $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT printf('¥%,.0f', COALESCE(SUM(amount), 0)) AS total
 FROM transactions
 WHERE {DATE_FILTER};
@@ -388,7 +429,7 @@ WHERE {DATE_FILTER};
 
 By category:
 ```bash
-sqlite3 -header -column ~/.openclaw/workspace/expenses.db "
+sqlite3 -header -column $OPENCLAW_CONFIG_HOME/data/expenses.db "
 SELECT category, COUNT(*) AS txns, printf('¥%,.0f', SUM(amount)) AS total
 FROM transactions
 WHERE {DATE_FILTER}
@@ -401,20 +442,7 @@ Replace `{DATE_FILTER}` with the appropriate clause from the table above.
 
 ---
 
-## For Japanese Text in Emails
-
-- 合計 / 合計金額 = Total
-- 小計 = Subtotal
-- 税 / 消費税 = Tax
-- 店名 / ご利用先 = Store name
-- ご利用金額 = Transaction amount
-- ご利用日 / ご利用日時 = Transaction date
-- Date formats: YYYY/MM/DD, YYYY年MM月DD日, MM/DD
-
 ## Error Handling
 
-- If email parsing fails, involve the error into the response to users including title of email and skip that email (don't crash the whole batch)
 - If amount can't be parsed, ask the user
 - If card can't be determined, ask the user
-- If Gmail search fails, report the error and suggest checking gog auth status
-- Always use INSERT OR IGNORE to prevent duplicate entries

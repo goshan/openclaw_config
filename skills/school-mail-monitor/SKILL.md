@@ -44,7 +44,7 @@ Usage: mail_fetch <sender1> <sender2> ...
 These <sender>s don't need to be a full mail address, it can be part of address, ex. a postfix from `@` like `@gmail.com`, etc
 Output: The content text of all newly fetched mails will be printed as stdout 
 Notes: max fetching number is: 20
-Location: `$OPENCLAW_CONFIG_HOME/tools/mail_fetch`
+Location: `$OPENCLAW_CONFIG_HOME/tools/mail/mail_fetch`
 
 ---
 

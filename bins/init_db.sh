@@ -2,6 +2,7 @@
 
 HOME_DIR=$(cd "$(dirname "$0")/.." &> /dev/null && pwd)
 MAIL_DB_PATH="$HOME_DIR/data/mails_monitor.db"
+EXPENSE_DB_PATH="$HOME_DIR/data/expense.db"
 
 echo "=== Init DB ==="
 echo ""
@@ -22,5 +23,36 @@ CREATE TABLE IF NOT EXISTS scan_state (
 );
 SQL
 
+
 echo "Database initialized at $MAIL_DB_PATH"
+echo ""
+
+sqlite3 "$EXPENSE_DB_PATH" << 'SQL'
+CREATE TABLE IF NOT EXISTS payment_methods (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  notification_sender TEXT
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  payment_method_id INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  store TEXT,
+  amount REAL NOT NULL,
+  currency TEXT DEFAULT 'JPY',
+  category TEXT,
+  note TEXT,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id)
+);
+
+INSERT OR IGNORE INTO payment_methods (id, name, notification_sender) VALUES
+  (1, 'Lexus', 'info@tscubic.com'),
+  (2, 'Amazon', 'statement@vpass.ne.jp'),
+  (3, 'PayPay', 'screenshot'),
+  (4, 'Cash', 'receipt');
+SQL
+
+echo "Database initialized at $EXPENSE_DB_PATH"
 echo ""
