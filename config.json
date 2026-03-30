@@ -1,6 +1,7 @@
 {
   "skills": [
-    "school-mail-monitor"
+    "school-mail-monitor",
+    "expenses-track"
   ],
   "cron": {
     "slack_channel_id": "C0APJPJR2MN",
@@ -9,6 +10,11 @@
         "name": "check_school_emails",
         "schedule": "0 8,12,18,22 * * *",
         "message": "Check for new school emails using the school-mail-monitor skill. Follow the workflow in the skill instructions to search emails from the target 2 school senders and make summary. Because the skill has specified how to send the summary to channels, so just follow that instruction, no need to send other information."
+      },
+      {
+        "name": "check_card_emails",
+        "schedule": "0 5 * * *",
+        "message": "Check for new card emails using the expenses-track skill. Follow the workflow in the MODE 1 instructions to search emails from the target 2 card issuer senders and extract the required data and insert to database. Because the skill has specified how to send the summary to channels, so just follow that instruction, no need to send other information."
       }
     ]
   }
