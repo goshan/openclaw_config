@@ -22,21 +22,18 @@ crontab -l > $crontab_backup
 # only keep the latest 3 backups
 printf '%s\n' "$BACKUP_DIR"/crontab_*.bak | sort -r | tail -n +4 | xargs -I {} rm -- "{}"
 echo "  - crontab -> $crontab_backup"
-echo ""
 
 openclaw_cron_backup="$BACKUP_DIR/openclaw_jobs_$TIME.bak.json"
 cp $OPENCLAW_CRON $openclaw_cron_backup
 # only keep the latest 3 backups
 printf '%s\n' "$BACKUP_DIR"/openclaw_jobs_*.bak.json | sort -r | tail -n +4 | xargs -I {} rm -- "{}"
 echo "  - openclaw jobs -> $openclaw_cron_backup"
-echo ""
 
 db_backup="$BACKUP_DIR/data_$TIME.bak"
 cp -r "$HOME_DIR/data/" "$db_backup"
 # only keep the latest 3 backups
 printf '%s\n' "$BACKUP_DIR"/data_*.bak | sort -r | tail -n +4 | xargs -I {} rm -rf -- "{}"
 echo "  - database -> $db_backup"
-echo ""
 
 echo "Backup finished"
 echo ""
