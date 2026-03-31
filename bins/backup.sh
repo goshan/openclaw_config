@@ -26,7 +26,7 @@ printf '%s\n' "$BACKUP_DIR/crontab_*.bak" | sort -r | tail -n +4 | xargs -I {} r
 echo "Backup crontab to $crontab_backup"
 echo ""
 
-openclaw_cron_backup="$BACK_DIR/openclaw_jobs_$TIME.bak.json"
+openclaw_cron_backup="$BACKUP_DIR/openclaw_jobs_$TIME.bak.json"
 cp $OPENCLAW_CRON $openclaw_cron_backup
 # only keep the latest 3 backups
 printf '%s\n' "$BACKUP_DIR/openclaw_jobs_*.bak.json" | sort -r | tail -n +4 | xargs -I {} rm -- "{}"
