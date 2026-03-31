@@ -89,8 +89,12 @@ If output says `NO_NEW_EMAILS`, skip step 2 and 3, go to step 4 directly.
 
 ### Step 2: Parse email content and extract expense fields
 
-Read the temp file got at step 1, for each email in the file, according to different email sender, extract the following transaction fields based on the email information with different strategy.
+Read the temp file got at step 1, for each email in the file, use the following rule to determine if it's a expense related mail or not.
+- Mail from `info@tscubic.com`, the mail subject would be sth like "ご利用のお知らせ[レクサスカード]" or "家族カードのご利用のお知らせ[レクサスカード]"
+- Mail from `statement@vpass.ne.jp`, the mail subject would be sth like "ご利用のお知らせ【三井住友カード】" or "ご利用明細のお知らせ【三井住友カード】"
+Otherwise, this is not a expense report mail, just skip it.
 
+For each expense report mail, extract the expense transaction fields based on the following rules.
 - payment_method_id
   - `info@tscubic.com` -> 1 (Lexus VISA)
   - `statement@vpass.ne.jp` -> 2 (Amazon Mastercard)
