@@ -3,6 +3,11 @@
     "school-mail-monitor",
     "expenses-track"
   ],
+  "tools": [
+    "mail_fetch",
+    "mail_extract",
+    "sqlite3_exec"
+  ],
   "cron": {
     "jobs": [
       {

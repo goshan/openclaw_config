@@ -6,7 +6,6 @@ set -ef
 echo "=== Deploy ==="
 echo ""
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/env"
 SKILL_DIR="$OPENCLAW_ROOT/workspace/skills"
 CRONTAB_BAK="$MY_OPENCLAW_ROOT/tmp/crontab.bak"
 

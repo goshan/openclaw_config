@@ -1,8 +1,7 @@
 #!/bin/bash
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/env"
-MAIL_DB_PATH="$MY_OPENCLAW_ROOT/data/mails_monitor.db"
-EXPENSE_DB_PATH="$MY_OPENCLAW_ROOT/data/expense.db"
+MAIL_DB_PATH="/data/mails_monitor.db"
+EXPENSE_DB_PATH="/data/expense.db"
 
 echo "=== Init DB ==="
 echo ""
@@ -24,8 +23,7 @@ CREATE TABLE IF NOT EXISTS scan_state (
 SQL
 
 
-echo "Database initialized at $MAIL_DB_PATH"
-echo ""
+echo "  - $MAIL_DB_PATH"
 
 sqlite3 "$EXPENSE_DB_PATH" << 'SQL'
 CREATE TABLE IF NOT EXISTS payment_methods (
@@ -53,5 +51,7 @@ INSERT OR IGNORE INTO payment_methods (id, name, notification_sender) VALUES
   (4, 'Cash', 'receipt');
 SQL
 
-echo "Database initialized at $EXPENSE_DB_PATH"
+echo "  - $EXPENSE_DB_PATH"
+
+echo "Database initialized"
 echo ""

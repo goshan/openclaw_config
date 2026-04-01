@@ -44,7 +44,6 @@ Usage: mail_fetch <sender1> <sender2> ...
 These <sender>s don't need to be a full mail address, it can be part of address, ex. a postfix from `@` like `@gmail.com`, etc
 Output: Save all email content to a temp file, and print the file path to the stdout
 Notes: max fetching number is: 20
-Location: `$MY_OPENCLAW_ROOT/tools/mail/mail_fetch`
 
 ---
 
@@ -53,7 +52,7 @@ Location: `$MY_OPENCLAW_ROOT/tools/mail/mail_fetch`
 ### Step 1: Run the script
 
 ```bash
-$MY_OPENCLAW_ROOT/tools/mail/mail_fetch "m@mail1.veracross.com" "@issh.ac.jp"
+mail_fetch "m@mail1.veracross.com" "@issh.ac.jp"
 ```
 
 This fetches all new emails sent by "m@mail1.veracross.com" and "@issh.ac.jp" after last fetch date, deduplicates, and output clean content text to a temp file. The temp file path is printed by stdout as 'Save all emails content to file: <temp_file_path>'
@@ -112,4 +111,4 @@ User can also ask questions directly in chat
 - "Check school emails" -> User can ask to check the latest new emails from school in chat, then run the full workflow manually
 - "Explain more details for a summarized mail" -> Answer user's question based on this content of plain text file. If you lost the extracted email content, you can use the following steps to re-fetch
   - Fetch mail content by `gog gmail get <message_id> --account $GOG_ACCOUNT` and save it to a json file.
-  - extract the json to a plain text by `$MY_OPENCLAW_ROOT/tools/mail/mail_extract <gmail_json_file>.json <plain_text_content_file>.txt`
+  - extract the json to a plain text by `mail_extract <gmail_json_file>.json <plain_text_content_file>.txt`

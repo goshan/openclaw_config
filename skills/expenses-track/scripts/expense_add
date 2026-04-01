@@ -6,12 +6,11 @@ Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
 """
 
 import sys
-import os
 import sqlite3
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(os.environ["MY_OPENCLAW_ROOT"]) / 'data' / 'expense.db'
+DB_PATH = '/data/expense.db'
 
 
 def parse_date(date_str):

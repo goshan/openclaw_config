@@ -2,7 +2,6 @@
 
 echo "Backup..."
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/env"
 OPENCLAW_CRON="$OPENCLAW_ROOT/cron/jobs.json"
 OPENCLAW_SKILL="$OPENCLAW_ROOT/workspace/skills"
 BACKUP_DIR="$MY_OPENCLAW_ROOT/backup"
