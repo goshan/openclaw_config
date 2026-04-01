@@ -48,7 +48,7 @@ Multi-modal expense tracker. Handles email notifications, image uploads (receipt
 - `4` = Cash (receipt)
 
 **Key scripts**:
-- `skills/expenses-track/scripts/expense_add <payment_method_id> <date> <store> <amount> <category> <note>`
+- `expense_add <payment_method_id> <date> <store> <amount> <category> <note> [--currency CODE]`
 - `skills/expenses-track/scripts/report daily|monthly`
 
 **Categories**: Food, Groceries, Shopping, Transport, Dining, Gas/Fuel, Health, Subscription, Utilities, Other

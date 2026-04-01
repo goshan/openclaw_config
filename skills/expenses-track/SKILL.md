@@ -72,8 +72,11 @@ Database is in `$HOME/data/mails_monitor.db`
 ### expense_add
 
 Insert a transaction record into the expense database.
-Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
+Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note> [--currency CODE]
   date:     'YYYY/MM/DD', 'YYYY-MM-DD', or either with ' HH:mm' — stored as YYYY-MM-DD
+  currency: ISO 4217 code (default: JPY). If non-JPY, fetches live rate and converts to JPY.
+            Appends "original amount: CURRENCY RAW" to note automatically.
+            If the rate fetch fails, stores the raw amount and marks note with "currency conversion failed".
 Note: Database is located in `$HOME/data/expense.db`
 
 ---
@@ -105,7 +108,8 @@ For each expense report mail, extract the expense transaction fields based on th
 - date: look for content about '利用日'
 - store: look for content about '利用先'
 - amount: look for content about '利用金額'
-  - if the unit is not yen, ¥, or 円, then detect the currency and convert the amount to JPY with the latest currency, then record the original amount, unit, and currency as <note>
+  - extract the raw numeric amount and its currency code (e.g. USD, EUR, JPY) by determining marks like '¥', '$', '円', etc.
+  - do NOT convert — pass the raw amount and currency to `expense_add` via `--currency`
 - category: Assign categories based on store name keywords
   - コンビニ, Lawson, ファミマ, セブン, 7-Eleven → Food
   - スーパー, イオン, ライフ, まいばすけっと → Groceries
@@ -118,8 +122,8 @@ For each expense report mail, extract the expense transaction fields based on th
   - 電気, ガス, 水道, NHK → Utilities
   - Other for anything that doesn't match
 - note
-  - if the original amount unit was not JPY, and a currency conversion hapened, record the amount, unit, currency to this field
   - any other important information or memo that needs to be recorded, set to NULL if there is no
+  - do NOT manually construct currency conversion notes — `expense_add` appends them automatically
 
 Attention: There might be some information about `取引結果` or something, and if the value is something like `取引不成立`, then just skip this email and no need to run step 3 for this email.
 
@@ -128,7 +132,11 @@ Attention: There might be some information about `取引結果` or something, an
 For each extracted transaction data, insert to sqlite3 database by the following command
 
 ```bash
+# JPY (default)
 expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<category>" "<note>"
+
+# Foreign currency — script fetches live rate and converts to JPY automatically
+expense_add "<payment_method_id>" "<date>" "<store>" "<amount>" "<category>" "<note>" --currency <CURRENCY CODE>
 ```
 
 ### Step 4: Report results

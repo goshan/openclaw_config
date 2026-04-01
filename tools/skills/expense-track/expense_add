@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """
 expense_add: Insert a transaction record into the expenses database.
-Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note>
+Usage: expense_add <payment_method_id> <date> <store> <amount> <category> <note> [--currency CODE]
   date:     'YYYY/MM/DD', 'YYYY-MM-DD', or either with ' HH:mm' — stored as YYYY-MM-DD
+  currency: ISO 4217 currency code (default: JPY). If not JPY, amount is converted to JPY.
+            Appends "original amount: CURRENCY RAW" to note automatically.
+            If the rate fetch fails, stores the raw amount and marks note with "currency conversion failed".
 Note: Database is located in `$HOME/data/expense.db`
 """
 
 import os
 import sys
+import json
 import sqlite3
-from pathlib import Path
+import argparse
+import urllib.request
 from datetime import datetime
 
 DB_PATH = os.path.expanduser('~/data/expense.db')
+EXCHANGE_API = 'https://api.frankfurter.app/latest?from={}&to=JPY'
 
 
 def parse_date(date_str):
-    """Parse date in various formats and return 'YYYY-MM-DD'."""
     for fmt in ('%Y/%m/%d %H:%M', '%Y/%m/%d', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
         try:
             return datetime.strptime(date_str.strip(), fmt).strftime('%Y-%m-%d')
@@ -25,24 +30,54 @@ def parse_date(date_str):
     raise ValueError(f"Invalid date format: '{date_str}'. Expected 'YYYY/MM/DD' or 'YYYY-MM-DD' (with optional HH:mm).")
 
 
-def main():
-    if len(sys.argv) != 7:
-        print(__doc__)
-        sys.exit(1)
+def fetch_rate(currency):
+    try:
+        url = EXCHANGE_API.format(currency)
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = json.loads(resp.read())
+            return data['rates']['JPY']
+    except Exception:
+        return None
 
-    payment_method_id, date_raw, store, amount_raw, category, note = sys.argv[1:]
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('payment_method_id')
+    parser.add_argument('date')
+    parser.add_argument('store')
+    parser.add_argument('amount')
+    parser.add_argument('category')
+    parser.add_argument('note')
+    parser.add_argument('--currency', default='JPY', metavar='CODE',
+                        help='ISO 4217 currency code (default: JPY)')
+    args = parser.parse_args()
 
     try:
-        date = parse_date(date_raw)
+        date = parse_date(args.date)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     try:
-        amount = float(amount_raw)
+        amount_raw = float(args.amount)
     except ValueError:
-        print(f"Error: amount must be a number, got '{amount_raw}'.", file=sys.stderr)
+        print(f"Error: amount must be a number, got '{args.amount}'.", file=sys.stderr)
         sys.exit(1)
+
+    currency = args.currency.upper()
+    note = args.note if args.note.upper() != 'NULL' else ''
+
+    if currency == 'JPY':
+        amount = round(amount_raw)
+    else:
+        rate = fetch_rate(currency)
+        if rate is None:
+            amount = amount_raw
+            conversion_note = f"currency conversion failed (original: {currency} {amount_raw})"
+        else:
+            amount = round(amount_raw * rate)
+            conversion_note = f"original amount: {currency} {amount_raw}"
+        note = f"{note}; {conversion_note}" if note else conversion_note
 
     conn = None
     try:
@@ -50,10 +85,10 @@ def main():
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO transactions (payment_method_id, date, store, amount, category, note) VALUES (?, ?, ?, ?, ?, ?)",
-            (payment_method_id, date, store, amount, category, note)
+            (args.payment_method_id, date, args.store, amount, args.category, note or None)
         )
         conn.commit()
-        print(f"Inserted transaction id={cur.lastrowid}: {store} {amount} on {date}")
+        print(f"Inserted transaction id={cur.lastrowid}: {args.store} ¥{amount} on {date}")
     except sqlite3.Error as e:
         print(f"SQLite Error: {e}", file=sys.stderr)
         sys.exit(1)
