@@ -117,6 +117,8 @@ For each expense report mail, extract the expense transaction fields based on th
   - if the original amount unit was not JPY, and a currency conversion hapened, record the amount, unit, currency to this field
   - any other important information or memo that needs to be recorded, set to NULL if there is no
 
+Attention: There might be some information about `取引結果` or something, and if the value is something like `取引不成立`, then just skip this email and no need to run step 3 for this email.
+
 ### Step 3: Run the script to insert transaction record
 
 For each extracted transaction data, insert to sqlite3 database by the following command
