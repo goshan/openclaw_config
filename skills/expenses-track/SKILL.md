@@ -120,6 +120,7 @@ For each expense report mail, extract the expense transaction fields based on th
   - 薬局, マツモトキヨシ, ドラッグ → Health
   - Netflix, Spotify, YouTube, サブスク → Subscription
   - 電気, ガス, 水道, NHK → Utilities
+  - Moly, Class → Kids/Education
   - Other for anything that doesn't match
 - note
   - any other important information or memo that needs to be recorded, set to NULL if there is no

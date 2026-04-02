@@ -26,6 +26,15 @@ This repo is the single source of truth for all OpenClaw skills, cron jobs, shar
 brew install gogcli
 ```
 
+**Download bin file** (Linux server, arm64 or amd64 version)
+```bash
+curl -L https://github.com/steipete/gogcli/releases/download/v0.12.0/gogcli_0.12.0_linux_amd64.tar.gz -o gogcli.tar.gz
+tar -xzf gogcli.tar.gz
+mv gog /usr/local/bin/gog
+chmod +x /usr/local/bin/gog
+```
+
+
 **Build from Source** (Linux server):
 ```bash
 git clone https://github.com/steipete/gogcli.git
@@ -33,6 +42,12 @@ cd gogcli
 make
 # Move binary to PATH, e.g.:
 sudo mv bin/gog /usr/local/bin/gog
+```
+
+**Verify**
+```bash
+gog --version
+v0.12.0 (c18c58c 2026-03-09T05:53:14Z)
 ```
 
 ### Google Cloud OAuth Credentials
@@ -54,14 +69,18 @@ gog auth credentials ~/Downloads/client_secret_....json
 For headless/remote server (no browser on server), use the manual flow:
 
 ```bash
-gog auth add you@gmail.com --services user --manual
+gog auth add <you>@gmail.com --services user --manual
 ```
 
 - The CLI prints an auth URL — open it in a local browser
 - After approval, copy the full redirect URL from the browser address bar
 - Paste it back into the terminal when prompted
 
-The refresh token is stored securely in your system keychain. Set `GOG_KEYRING_PASSWORD` in the `env` file if keychain access requires a password.
+Here a password might be reuqired as the following, This is used for the refresh token that is stored securely in your system keychain.
+```bash
+Enter passphrase to unlock "/root/.config/gogcli/keyring":
+```
+Then set the password to `GOG_KEYRING_PASSWORD` in the `env` file.
 
 ### Test
 
