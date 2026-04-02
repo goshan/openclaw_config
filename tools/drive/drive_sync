@@ -1,16 +1,12 @@
 #!/bin/bash
 
 # drive_sync: Upload all local SQLite database files under `$HOME/data` to a Google Drive folder, replacing existing files of the same name
-# Usage: drive_sync <drive_folder_id>
+# Usage: drive_sync
 # Env:   GOG_ACCOUNT — Google account for gog CLI
+#        GOG_DRIVE_FOLDER_ID — Google Drive folder ID for DB file sync
 # Note:  Uses sqlite3 .backup for a safe, consistent copy before uploading
 
 set -e
-
-if [ "$#" -lt 1 ]; then
-  echo "Usage: drive_sync <drive_folder_id>" >&2
-  exit 1
-fi
 
 DB_DIR="$HOME/data"
 
