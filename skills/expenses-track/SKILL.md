@@ -214,7 +214,7 @@ When user says something like "spent 1500 yen at Lawson with PayPay":
   - paypay or sth like this -> 'PayPay'
   - user may say 'iD' or 'id' or "ID" -> 'Amazon Mastercard'
 - date
-  - message date, also use format YYYY/MM/DD
+  - default is today if user didn't mention. also use format YYYY/MM/DD
 - store
   - 'Unknown' as default if no user input, no need to confirm
 - amount
