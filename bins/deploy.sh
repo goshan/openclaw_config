@@ -78,10 +78,10 @@ while read -r job; do
       | jq -r '.id' > "$MY_OPENCLAW_ROOT/tmp/cron_id_$name"
   elif [[ "$cron_type" == "system" ]]; then
     task=$(echo $job | jq -r '.task')
-    log=$(echo $job | jq -r '.log')
+    log=$(echo $job | jq -e '.log')
 
     task_cmd="$task"
-    if $log; then
+    if $log > /dev/null; then
       task_cmd+=" >> $HOME/log/${name}.log 2>&1"
     fi
     # Generate new managed block
