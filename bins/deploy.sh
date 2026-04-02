@@ -81,7 +81,8 @@ while read -r job; do
     log=$(echo $job | jq -e '.log')
 
     task_cmd="$task"
-    if $log > /dev/null; then
+    # log
+    if [ "$log" == "true" ]; then
       task_cmd+=" >> $HOME/log/${name}.log 2>&1"
     fi
     # Generate new managed block
