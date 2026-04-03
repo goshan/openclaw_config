@@ -109,7 +109,7 @@ Edit `env` and set at minimum:
 ```bash
 source ~/my_openclaw/env
 mkdir -p $HOME/data
-db_pull
+~/my_openclaw/dashboard/db_pull
 ```
 
 ### 7. Start Metabase
