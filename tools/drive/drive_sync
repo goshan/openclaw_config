@@ -9,6 +9,7 @@
 set -e
 
 echo "===========$(date)==========="
+echo ""
 
 DB_DIR="$HOME/data"
 
@@ -34,6 +35,7 @@ for db in "$DB_DIR"/*; do
   echo "🚀 Uploading $filename..."
   gog drive upload "$tmp_copy" --parent "$GOG_DRIVE_FOLDER_ID" --account "$GOG_ACCOUNT"
   echo "✅ Done: $filename"
+  echo ""
 done
 
 echo "drive_sync: complete"
