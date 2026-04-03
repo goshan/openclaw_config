@@ -7,9 +7,9 @@ This directory contains everything needed to run the visualization server — a 
 ```
 3:00 AM  check_card_emails (OpenClaw, main server)
            → expense data written to expense.db
-3:30 AM  drive_sync_dbs (cron, main server)
+4:00 AM  drive_sync_dbs (cron, main server)
            → expense.db + mails_monitor.db uploaded to Google Drive
-4:00 AM  db_pull (cron, this server)
+5:00 AM  db_pull (cron, this server)
            → databases downloaded to $HOME/data/
            → Metabase reads updated files on next hourly sync
 ```
@@ -29,8 +29,19 @@ This directory contains everything needed to run the visualization server — a 
 
 ```bash
 curl -fsSL https://get.docker.com | sh
+
+systemctl start docker
+systemctl enable docker
+
+# (Optional) Allow your user to run docker without 'sudo'
 sudo usermod -aG docker $USER
 newgrp docker
+```
+
+Vefify:
+
+```bash
+docker -v
 ```
 
 ### 2. Install gog
@@ -39,7 +50,7 @@ newgrp docker
 # Download binary (replace amd64 with arm64 if needed)
 curl -L https://github.com/steipete/gogcli/releases/download/v0.12.0/gogcli_0.12.0_linux_amd64.tar.gz -o gogcli.tar.gz
 tar -xzf gogcli.tar.gz
-sudo mv gog /usr/local/bin/gog
+mv gog /usr/local/bin/gog
 chmod +x /usr/local/bin/gog
 ```
 
@@ -72,8 +83,8 @@ gog gmail labels list
 ### 4. Clone the repo
 
 ```bash
-git clone <repo-url> ~/openclaw_config
-cd ~/openclaw_config
+git clone <repo-url> ~/my_openclaw
+cd ~/my_openclaw
 ```
 
 ### 5. Configure environment
@@ -86,33 +97,29 @@ Edit `env` and set at minimum:
 
 | Variable | Value |
 |----------|-------|
-| `MY_OPENCLAW_ROOT` | Absolute path to this repo, e.g. `/home/ubuntu/openclaw_config` |
+| `MY_OPENCLAW_ROOT` | Absolute path to this repo, e.g. `/home/ubuntu/my_openclaw` |
 | `GOG_ACCOUNT` | Your Google account email |
 | `GOG_KEYRING_PASSWORD` | Keyring passphrase from step 3 |
-| `DRIVE_FOLDER_ID` | Google Drive folder ID shared with the main server |
+| `GOG_DRIVE_FOLDER_ID` | Google Drive folder ID shared with the main server |
 
 `OPENCLAW_ROOT` and `SLACK_WEBHOOK_URL` are not needed on this server.
 
-### 6. Install db_pull
+### 6. Do an initial pull
 
 ```bash
-sudo cp ~/openclaw_config/dashboard/db_pull /usr/local/bin/db_pull
-sudo chmod +x /usr/local/bin/db_pull
-```
-
-### 7. Do an initial pull
-
-```bash
-source ~/openclaw_config/env
+source ~/my_openclaw/env
 mkdir -p $HOME/data
-db_pull $DRIVE_FOLDER_ID $HOME/data/
+db_pull
 ```
 
-### 8. Start Metabase
+### 7. Start Metabase
 
 ```bash
-cd ~/openclaw_config/dashboard
+cd ~/my_openclaw/dashboard
 docker compose up -d
+
+# this docker will be auto-restarted everytime, so if you want to stop
+docker compose stop
 ```
 
 Metabase will be available at `http://<server-ip>:3000`. Complete the initial setup wizard, then:
@@ -124,30 +131,30 @@ Metabase will be available at `http://<server-ip>:3000`. Complete the initial se
 
 Metabase re-syncs hourly — new data from the nightly pull is automatically picked up.
 
-### 9. Set up the cron job
+### 8. Set up the cron job
 
 ```bash
 crontab -e
 ```
 
-Add the following line (runs at 4:00 AM, 30 minutes after the main server uploads):
+Add the following line (runs at 5:00 AM, 1 hour after the main server uploads):
 
 ```
-0 4 * * * /bin/bash -c 'source /home/ubuntu/openclaw_config/env && db_pull $DRIVE_FOLDER_ID $HOME/data/' >> /var/log/db_pull.log 2>&1
+0 5 * * * /bin/bash -c 'source /root/my_openclaw/env && db_pull' >> /root/log/db_pull.log 2>&1
 ```
 
-Adjust the path to `openclaw_config` to match your `MY_OPENCLAW_ROOT`.
+Adjust the path to `my_openclaw` to match your `MY_OPENCLAW_ROOT`, also adjust the path to correct log path.
 
 ---
 
 ## Updating
 
-When new databases are added to `drive_sync` on the main server, update the cron job on this server accordingly — `db_pull` downloads all files in the folder, so no script changes are needed.
+When new databases are added, `drive_sync` on the main server will automatically upload, and `db_pull` downloads all files in the folder, so no script changes are needed.
 
 To update Metabase to a new version:
 
 ```bash
-cd ~/openclaw_config/dashboard
+cd ~/my_openclaw/dashboard
 docker compose pull
 docker compose up -d
 ```

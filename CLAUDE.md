@@ -19,7 +19,7 @@ dashboard/              # SQLite DB visualization running in another server
 
 - Deployed path on server: `/home/ubuntu/my_openclaw/`
 - Environment loaded from: `/home/ubuntu/my_openclaw/env`
-- Key env vars: `MY_OPENCLAW_ROOT`, `GOG_ACCOUNT`, `SLACK_WEBHOOK_URL`
+- Key env vars: `MY_OPENCLAW_ROOT`, `GOG_ACCOUNT`, `GOG_DRIVE_FOLDER_ID`, `SLACK_WEBHOOK_URL`
 - Skills are copied to: `$HOME/.openclaw/workspace/skills/`
 - Databases live in: `$HOME/data/`
 
@@ -31,7 +31,7 @@ dashboard/              # SQLite DB visualization running in another server
 
 Fetches emails from two school senders and summarizes them in Chinese for a Slack channel.
 
-- Senders: `m@mail1.veracross.com` (Veracross), `@issh.ac.jp` (ISSH)
+- Senders: `veracross.com` (Veracross), `@issh.ac.jp` (ISSH)
 - Output channel: `#mail-report` (Slack channel ID: `C0APJPJR2MN`)
 - Summaries: Always in Chinese, 2–4 sentences per email
 - Tool: `$MY_OPENCLAW_ROOT/tools/mail/mail_fetch`

@@ -29,8 +29,4 @@ $MY_OPENCLAW_ROOT/bins/init_db.sh
 # Deploy
 $MY_OPENCLAW_ROOT/bins/deploy.sh
 
-echo "Importing env to .zshrc"
-echo "" >> "$HOME/.zshrc"
-echo "# My OpenClaw ENV" >> "$HOME/.zshrc"
-echo "source \"$env_path\"" >> "$HOME/.zshrc"
 echo "=== Setup Complete ==="
