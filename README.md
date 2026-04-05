@@ -123,6 +123,12 @@ FLUSH PRIVILEGES;
 
 Set the same `<user>`, `<password>` as `MYSQL_USER`, `MYSQL_PASSWORD` in your `env` file.
 
+### Install pip3
+
+```bash
+sudo apt install -y python3-pip
+```
+
 ---
 
 ## Setup

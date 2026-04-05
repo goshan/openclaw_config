@@ -58,7 +58,14 @@ GRANT ALL PRIVILEGES ON expense.* TO 'openclaw'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 3. Install gog
+### 3. Install pip3 and Python dependencies
+
+```bash
+sudo apt install -y python3-pip
+pip3 install mysql-connector-python
+```
+
+### 4. Install gog
 
 ```bash
 # Download binary (replace amd64 with arm64 if needed)
@@ -68,7 +75,7 @@ mv gog /usr/local/bin/gog
 chmod +x /usr/local/bin/gog
 ```
 
-### 4. Authenticate gog
+### 5. Authenticate gog
 
 The dashboard server has no browser, so use the manual flow:
 
@@ -94,14 +101,14 @@ export GOG_ACCOUNT=you@gmail.com
 gog gmail labels list
 ```
 
-### 5. Clone the repo
+### 6. Clone the repo
 
 ```bash
 git clone <repo-url> <my_openclaw_path>
 cd <my_openclaw_path>
 ```
 
-### 6. Configure environment
+### 7. Configure environment
 
 ```bash
 cp env.example env
@@ -113,7 +120,7 @@ Edit `env` and set at minimum:
 |----------|-------|
 | `MY_OPENCLAW_ROOT` | Absolute path to this repo |
 | `GOG_ACCOUNT` | Your Google account email |
-| `GOG_KEYRING_PASSWORD` | Keyring passphrase from step 4 |
+| `GOG_KEYRING_PASSWORD` | Keyring passphrase from step 5 |
 | `MYSQL_HOST` | `127.0.0.1` |
 | `MYSQL_PORT` | `3306` |
 | `MYSQL_USER` | User set in step 2 |
@@ -121,7 +128,7 @@ Edit `env` and set at minimum:
 
 `OPENCLAW_ROOT` and `SLACK_WEBHOOK_URL` are not needed on this server.
 
-### 7. Start Metabase
+### 8. Start Metabase
 
 ```bash
 cd <my_openclaw_path>/dashboard

@@ -8,8 +8,7 @@
     "mail/mail_extract",
     "database/mysql_exec",
     "skills/expense-track/expense_add",
-    "skills/expense-track/report",
-    "drive/drive_sync"
+    "skills/expense-track/report"
   ],
   "cron": {
     "jobs": [
@@ -38,13 +37,6 @@
         "type": "system",
         "schedule": "0 8 1 * *",
         "task": "report monthly"
-      },
-      {
-        "name": "drive_sync_dbs",
-        "type": "system",
-        "schedule": "0 4 * * *",
-        "task": "drive_sync",
-        "log": true
       }
     ]
   }
