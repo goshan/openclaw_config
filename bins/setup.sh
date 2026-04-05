@@ -18,7 +18,7 @@ echo ""
 
 # Install Python dependencies
 echo "Installing Python dependencies"
-pip3 install mysql-connector-python
+sudo apt install python3-mysql.connector -y
 echo ""
 
 # Initialize database
