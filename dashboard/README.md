@@ -89,14 +89,11 @@ sudo mysql
 CREATE DATABASE mails_monitor CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE expense CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE USER '<user_for_openclaw>'@'<openclaw-server-ip>' IDENTIFIED BY '<password_for_openclaw>';
-GRANT ALL PRIVILEGES ON mails_monitor.* TO '<user_for_openclaw>'@'<openclaw-server-ip>';
-GRANT ALL PRIVILEGES ON expense.* TO '<user_for_openclaw>'@'<openclaw-server-ip>';
-
+-- it's okay to use '%' because the firewall of server limit the input only from openclaw server.
 -- '%' is required because Metabase connects from inside Docker (e.g. 172.18.0.x), not localhost
-CREATE USER '<user_for_dashboard>'@'172.%' IDENTIFIED BY '<password_for_dashboard>';
-GRANT ALL PRIVILEGES ON mails_monitor.* TO '<user_for_dashboard>'@'172.%';
-GRANT ALL PRIVILEGES ON expense.* TO '<user_for_dashboard>'@'172.%';
+CREATE USER '<user>'@'%' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON mails_monitor.* TO '<user>'@'%';
+GRANT ALL PRIVILEGES ON expense.* TO '<user>'@'%';
 
 FLUSH PRIVILEGES;
 ```
@@ -106,13 +103,6 @@ Verify the OpenClaw server can connect:
 ```bash
 # Run this from the OpenClaw server
 mysql -h <mysql-server-ip> -u<user_for_openclaw> -p
-```
-
-Verify the dashboard user works:
-
-```bash
-# Run this from Dashboard server
-docker run --rm -it <any_docker_image> "mysql -hhost.docker.internal -u<user_for_dashboard> -p<password_for_dashboard>"
 ```
 
 ### 4. Clone the repo
